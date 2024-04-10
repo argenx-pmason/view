@@ -78,6 +78,7 @@ function App() {
     [rows, setRows] = useState([]),
     [cols, setCols] = useState([]),
     [current, setCurrent] = useState(null),
+    [key, setKey] = useState(null),
     [jsonUrl, setJsonUrl] = useState(null),
     Align = (props) => {
       const { myCustomHandler, align } = props;
@@ -242,6 +243,9 @@ function App() {
         url = `${webDavPrefix}${parsed.lsaf}`;
         setJsonUrl(url);
       }
+      if ("key" in parsed) {
+        setKey(parsed.key);
+      }
       console.log(
         "href",
         href,
@@ -252,15 +256,21 @@ function App() {
         "parsed",
         parsed,
         "url",
-        url
+        url,
+        "key",
+        key
       );
       fetch(url)
         .then((res) => res.json())
         .then((data) => {
           // setRows(data);
-          setRows(data.map((d, i) => ({ ...d, id: i }))); // add an id field to each row
+          let data2use = data;
+          if (key) {
+            data2use = data[key];
+          }
+          setRows(data2use.map((d, i) => ({ ...d, id: i }))); // add an id field to each row
           setCols(
-            Object.keys(data[0]).map((k) => ({
+            Object.keys(data2use[0]).map((k) => ({
               field: k,
               headerName: k,
               editable: true,
@@ -268,7 +278,7 @@ function App() {
           );
         });
     }
-  }, [href, mode]);
+  }, [href, mode, key]);
 
   console.log("rows", rows, "cols", cols);
 
@@ -335,9 +345,10 @@ function App() {
         onCellEditStop={handleCellEditStop}
         processRowUpdate={processRowUpdate}
       />
-      <Tooltip title="Save JSON back to server">
+      <Tooltip title="Save JSON back to server (keyed files not yet supported)">
         <Button
           variant="contained"
+          disabled={key}
           sx={{ mt: 1 }}
           onClick={() => {
             updateJsonFile(jsonUrl, rows);
