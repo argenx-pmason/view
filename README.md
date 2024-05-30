@@ -16,3 +16,12 @@ Ideas:
 if you have columns with long text strings e.g. paths to show, and they all start with  the same text, it might be useful to make the text right-aligned in the cells so you can see the interesting part (=the last characters) without having to display the whole string by widening the column; would that be easily implementable ?
 [10:29] Phil Mason
 thats a good idea - should be easy to either right justify everything or work out what is over a length and do it to that. I might add some options that a user can specify and then save them to local storage
+
+# column types
+- 'string' (default)    string
+- 'number'	            number
+- 'date'	            Date() object
+- 'dateTime'	        Date() object
+- 'boolean'             boolean
+- 'singleSelect'        A value in .valueOptions
+- 'actions'             Not applicable

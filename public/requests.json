@@ -1,0 +1,18 @@
+[
+  {
+    "name": "T1.1.1",
+    "type": "T",
+    "compound": "argx-113",
+    "study": "argx-113-2212",
+    "requiredBy": "pmason",
+    "rangeStartDate": "2024-05-30",
+    "rangeEndDate": "2024-06-30",
+    "criteria": "age>80",
+    "comments": "this is a comment",
+    "sourceSDTM": "/clinical/argx-113/aav/argx-113-2212/biostat/staging/data_received/sdtm_last/SDTM",
+    "sourceADaM": "/clinical/argx-113/aav/argx-113-2212/biostat/staging/data_received/sdtm_last/ADaM",
+    "outputlocation": "/clinical/argx-113/aav/argx-113-2212/biostat/staging/generic_adam/output",
+    "QClocation": "/clinical/argx-113/aav/argx-113-2212/biostat/staging/generic_adam/qc",
+    "QCstatus": "done"
+  }
+]
