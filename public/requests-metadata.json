@@ -1,6 +1,11 @@
 {
   "name": { "type": "string", "label": "Name" },
-  "type": { "type": "string", "label": "Type", "width": 40 },
+  "type": {
+    "type": "singleSelect",
+    "label": "Type",
+    "valueOptions": ["T", "L", "F", "D", "O"],
+    "width": 40
+  },
   "compound": { "type": "string", "label": "Compound", "width": 90 },
   "study": { "type": "string", "label": "Study" },
   "requiredBy": {

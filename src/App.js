@@ -222,7 +222,9 @@ function App() {
           console.log("DELETE err: ", err);
         });
     };
-  const addRecord = (e) => {
+  const [showMeta, setShowMeta] = useState(false),
+    [disableSave, setDisableSave] = useState(false),
+    addRecord = (e) => {
       const id = uuidv4();
       setRows((oldRows) => [...oldRows, { id: id }]);
       console.log("e", e);
@@ -256,6 +258,7 @@ function App() {
           if (key) {
             data2use = data[key];
           }
+          // TODO: check if the data is an array of objects, if not, make it so
           setRows(data2use.map((d, i) => ({ ...d, id: i }))); // add an id field to each row
           setCols(
             Object.keys(data2use[0]).map((k) => {
@@ -350,11 +353,17 @@ function App() {
       }
       if ("key" in parsed) {
         setKey(parsed.key);
+        setDisableSave(false);
+      } else {
+        setDisableSave(true);
       }
       if ("meta" in parsed) {
         setMetaUrl(parsed.meta);
         url = `${webDavPrefix}${parsed.meta}`;
         setMetaUrl(url);
+        setShowMeta(true);
+      } else {
+        setShowMeta(false);
       }
       getData(parsed.lsaf, parsed.meta);
     }
@@ -392,7 +401,7 @@ function App() {
           <Tooltip title="Save JSON back to server (keyed files not yet supported)">
             <Button
               variant="contained"
-              disabled={key}
+              disabled={!disableSave}
               sx={{ m: 1, ml: 2 }}
               onClick={() => {
                 updateJsonFile(dataUrl, rows);
@@ -406,6 +415,7 @@ function App() {
           </Tooltip>
           <Button
             variant="contained"
+            disabled={!disableSave}
             color="info"
             startIcon={<Add />}
             onClick={addRecord}
@@ -416,6 +426,7 @@ function App() {
           </Button>
           <Button
             variant="contained"
+            disabled={!disableSave}
             color="info"
             startIcon={<Delete />}
             onClick={deleteRecord}
@@ -441,6 +452,7 @@ function App() {
           <Tooltip title="View metadata from LSAF as a JSON file">
             <Button
               variant="contained"
+              disabled={showMeta ? false : true}
               color="info"
               startIcon={<Wysiwyg />}
               onClick={() => {
@@ -463,7 +475,8 @@ function App() {
           >
             {current ? (
               <span>
-                <b>Currently viewing</b> {current}
+                <b>Currently viewing</b> {current}{" "}
+                {key ? ` with key: ${key}` : ""}
               </span>
             ) : mode === "local" ? (
               "Running locally"
@@ -548,8 +561,26 @@ function App() {
         onClose={() => setOpenInfo(false)}
         open={openInfo}
       >
-        <DialogTitle>Info about this screen</DialogTitle>
+        <DialogTitle>Info about this screen (to be completed)</DialogTitle>
         <DialogContent>
+          <Box sx={{ color: "blue", fontSize: 10 }}>
+            This tools works with JSON data that is arranged as an array of
+            objects. That is the kind of JSON you get when using PROC JSON to
+            export data from SAS. The metadata file is optional, but if it is
+            provided, it can be used to define the columns in the table. The
+            metadata file should be a JSON file with the same keys as the data
+            file, and each key should have a label, type, and width. The type
+            can be string, number, date, dateTime, or boolean. The width is
+            optional, and is used to set the width of the column in the table.
+            The data file can be keyed, in which case the key parameter should
+            be provided in the URL. The key parameter is the key of the table to
+            display. The data file can be viewed in a separate window by
+            clicking the "Data" button. The metadata file can be viewed in a
+            separate window by clicking the "Meta" button. The data can be saved
+            back to the server by clicking the "Save" button. The data can be
+            added to by clicking the "Add" button. The data can be deleted by
+            clicking the "Delete" button.
+          </Box>
           <ul>
             <li>
               <b>Double click</b> on a cell to edit that row.
@@ -572,6 +603,38 @@ function App() {
               Pressing <b>SAVE</b> will first delete the file that was there
               (using HTTP DELETE), and then does an writes the file to server
               (using HTTP PUT).
+            </li>
+          </ul>
+          <b>URL parameters</b>
+          <ul>
+            <li>
+              <b>lsaf</b> - the location of the JSON file to load
+            </li>
+            <li>
+              <b>meta</b> - the location of the metadata file to load
+            </li>
+            <li>
+              <b>key</b> - the key of the JSON file to load
+            </li>
+          </ul>
+          <b>Sample uses</b>
+          <ul>
+            <li>
+              <a href="https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/view/index.html?lsaf=/general/biostat/tools/view/requests.json&meta=/general/biostat/tools/view/requests-metadata.json">
+                View a JSON file, using metadata to define the columns
+              </a>
+            </li>
+            <li>
+              <a href="https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/view/index.html?lsaf=/general/biostat/tools/view/requests.json">
+                View a JSON file, without metadata and therefore treating all
+                fields as strings
+              </a>
+            </li>
+            <li>
+              <a href="https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/view/index.html?lsaf=/general/biostat/tools/view/data%20wtih%20keys.json&key=a">
+                View a JSON file which has multiple tables with keys, specifying
+                a key for which table you want to view
+              </a>
             </li>
           </ul>
         </DialogContent>
