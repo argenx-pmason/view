@@ -1,13 +1,65 @@
 {
-  "a": { "type": "number", "label": "number" },
-  "b": { "type": "string", "label": "character" },
-  "c": { "type": "date", "label": "date", "width": 90 },
-  "d": { "type": "boolean", "label": "true/false" },
-  "e": {
+  "compound": {
     "type": "singleSelect",
-    "label": "select",
-    "valueOptions": ["dog", "cat", "bear"],
-    "width": 60
+    "label": "Compound",
+    "width": 60,
+    "valueOptions": ["113", "117", "119"]
   },
-  "f": { "type": "dateTime", "label": "date/time", "width": 140 }
+  "repEvent": {
+    "type": "singleSelect",
+    "label": "Rep Event",
+    "width": 60,
+    "valueOptions": ["brc", "dsur", "psur", "other"]
+  },
+  "requiredBy": { "type": "string", "label": "Requestor", "width": 100 },
+  "request": { "type": "string", "label": "Request", "width": 200 },
+  "dueDate": { "type": "date", "label": "Due date", "width": 90, "sort": 1 },
+  "delivery": { "type": "date", "label": "Delivery date", "width": 90 },
+
+  "programmer": {
+    "type": "singleSelect",
+    "label": "Programmer",
+    "width": 90,
+    "valueOptions": ["pschrauben", "sshipp"]
+  },
+  "Status": {
+    "type": "singleSelect",
+    "label": "Status",
+    "valueOptions": ["Not started", "Ongoing", "Ready for QC"],
+    "width": 120
+  },
+  "StatusComments": {
+    "type": "string",
+    "label": "Status Comments",
+    "width": 200
+  },
+
+  "reviewer": {
+    "type": "singleSelect",
+    "label": "Reviewer",
+    "width": 90,
+    "valueOptions": ["sshipp", "pschrauben"]
+  },
+  "QCstatus": {
+    "type": "singleSelect",
+    "label": "Status",
+    "valueOptions": [
+      "Not started",
+      "Ongoing",
+      "QC comments",
+      "QC ok",
+      "Not QC"
+    ],
+    "width": 120
+  },
+  "QCComments": { "type": "string", "label": "Status Comments", "width": 200 },
+
+  "outputlocation": {
+    "type": "string",
+    "label": "Output location",
+    "width": 200
+  },
+  "Input": { "type": "string", "label": "Input", "width": 200 },
+  "InputQC": { "type": "string", "label": "Input for QC", "width": 200 },
+  "QClocation": { "type": "string", "label": "QC location", "width": 200 }
 }

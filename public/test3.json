@@ -2,15 +2,15 @@
   {
     "compound": "113",
     "repEvent": "other",
-    "requiredBy": "Haiyan Gao",
-    "request": "AE overview for TEAE that started after GFR 30-60 ml/min/1.73m² in - completed studies",
+    "requiredBy": "Haiyan",
+    "request": "AE overview for TEAE that started after GFR 30-60 ml/min/1.73m²nin - completed studies",
     "dueDate": "2024-05-30T22:00:00.000Z",
     "programmer": "pschrauben",
-    "Status": "Ongoing",
-    "StatusComments": "Add CREAT formula - wait final decision",
+    "Status": "Ready for QC",
+    "StatusComments": "",
     "reviewer": "pschrauben",
-    "QCstatus": "Ongoing",
-    "QCComments": "QC ok for completed Studies and no CREAT",
+    "QCstatus": "QC ok",
+    "QCComments": "",
     "Input": ".../other/adam (from sdtm 25MAY)",
     "outputlocation": ".../other/output/2024-05 gfr_ae/ae_glomfiltrate_completed_2024_05_30.docx",
     "InputQC": "/clinical/argx-113/x-ind/argx-113-0000/biostat/staging/data_received/sdtm_last",
@@ -23,9 +23,7 @@
     "request": "update the 117 SMT meeting outputs when fully unblinded ARDA data become available",
     "dueDate": "2024-06-06T22:00:00.000Z",
     "programmer": "pschrauben",
-    "Status": "Not started",
-    "Input": "",
-    "StatusComments": "wait ARDA unblind"
+    "Status": "Not started"
   },
   {
     "compound": "113",
@@ -34,11 +32,9 @@
     "dueDate": "2024-06-05T22:00:00.000Z",
     "request": "Saudi Arabia report -reporting period is from 01MAR2024 until 31MAY2024 - interval  + cumulative expo",
     "programmer": "pschrauben",
-    "Status": "Ready for QC",
+    "Status": "Ongoing",
     "reviewer": "sshipp",
-    "Input": ".../other/adam (from sdtm 01JUN)",
-    "outputlocation": "../other/output/2024-05-31 saudi arabia",
-    "QCstatus": "Ongoing",
-    "StatusComments": ""
+    "Input": "",
+    "outputlocation": "../other/output/2024-05-31 saudi arabia"
   }
 ]

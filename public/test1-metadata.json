@@ -1,7 +1,7 @@
 {
   "a": { "type": "number", "label": "number" },
   "b": { "type": "string", "label": "character" },
-  "c": { "type": "date", "label": "date", "width": 90 },
+  "c": { "type": "date", "label": "date", "width": 90, "sort": 1 },
   "d": { "type": "boolean", "label": "true/false" },
   "e": {
     "type": "singleSelect",

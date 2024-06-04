@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Dialog,
@@ -10,12 +10,13 @@ import {
   AppBar,
   MenuItem,
   Menu,
-  // Link,
   Snackbar,
   Button,
-  Grid,
   ListItemIcon,
   ListItemText,
+  Popper,
+  Paper,
+  Typography,
 } from "@mui/material";
 import {
   DataGridPro,
@@ -24,7 +25,6 @@ import {
   useGridApiContext,
   gridColumnDefinitionsSelector,
   GridCellEditStopReasons,
-  GridToolbar,
   useGridApiRef,
 } from "@mui/x-data-grid-pro";
 import {
@@ -36,27 +36,122 @@ import {
   Wysiwyg,
   Visibility,
   Delete,
-  Remove,
 } from "@mui/icons-material";
 import { v4 as uuidv4 } from "uuid";
 import MenuIcon from "@mui/icons-material/Menu";
 import "./App.css";
 import localData from "./data.json";
 import localMeta from "./metadata.json";
-import links from "./links.json";
 // apply the license for data grid
 LicenseInfo.setLicenseKey(
   "369a1eb75b405178b0ae6c2b51263cacTz03MTMzMCxFPTE3MjE3NDE5NDcwMDAsUz1wcm8sTE09c3Vic2NyaXB0aW9uLEtWPTI="
 );
+
+const GridCellExpand = React.memo(function GridCellExpand(props) {
+    const { width, value } = props;
+    const wrapper = React.useRef(null);
+    const cellDiv = React.useRef(null);
+    const cellValue = React.useRef(null);
+    const [anchorEl, setAnchorEl] = React.useState(null);
+    const [showFullCell, setShowFullCell] = React.useState(false);
+    const [showPopper, setShowPopper] = React.useState(false);
+
+    const handleMouseEnter = () => {
+      const isCurrentlyOverflown = isOverflown(cellValue.current);
+      setShowPopper(isCurrentlyOverflown);
+      setAnchorEl(cellDiv.current);
+      setShowFullCell(true);
+    };
+
+    const handleMouseLeave = () => {
+      setShowFullCell(false);
+    };
+
+    useEffect(() => {
+      if (!showFullCell) {
+        return undefined;
+      }
+
+      function handleKeyDown(nativeEvent) {
+        if (nativeEvent.key === "Escape") {
+          setShowFullCell(false);
+        }
+      }
+
+      document.addEventListener("keydown", handleKeyDown);
+
+      return () => {
+        document.removeEventListener("keydown", handleKeyDown);
+      };
+    }, [setShowFullCell, showFullCell]);
+
+    return (
+      <Box
+        ref={wrapper}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        sx={{
+          alignItems: "center",
+          lineHeight: "24px",
+          width: "100%",
+          height: "100%",
+          position: "relative",
+          display: "flex",
+        }}
+      >
+        <Box
+          ref={cellDiv}
+          sx={{
+            height: "100%",
+            width,
+            display: "block",
+            position: "absolute",
+            top: 0,
+          }}
+        />
+        <Box
+          ref={cellValue}
+          sx={{
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {value}
+        </Box>
+        {showPopper && (
+          <Popper
+            open={showFullCell && anchorEl !== null}
+            anchorEl={anchorEl}
+            style={{ width, marginLeft: -17 }}
+          >
+            <Paper
+              elevation={1}
+              style={{ minHeight: wrapper.current.offsetHeight - 3 }}
+            >
+              <Typography variant="body2" style={{ padding: 8 }}>
+                {value}
+              </Typography>
+            </Paper>
+          </Popper>
+        )}
+      </Box>
+    );
+  }),
+  isOverflown = (element) => {
+    return (
+      element.scrollHeight > element.clientHeight ||
+      element.scrollWidth > element.clientWidth
+    );
+  };
+
 function App() {
   const apiRef = useGridApiRef(),
-    { href, host } = window.location, // get the URL so we can work out where we are running
-    mode = href.startsWith("http://localhost") ? "local" : "remote",
-    webDavPrefix = "https://" + host + "/lsaf/webdav/repo", // prefix for webdav access to LSAF
+    { href } = window.location, // get the URL so we can work out where we are running
+    mode = href.startsWith("http://localhost") ? "local" : "remote", // local or remote, which is then used for development and testing
+    webDavPrefix = "https://xarprod.ondemand.sas.com/lsaf/webdav/repo", // prefix for webdav access to LSAF
     fileViewerPrefix =
-      "https://" +
-      host +
-      "/lsaf/filedownload/sdd:/general/biostat/tools/fileviewer/index.html?file=",
+      "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd:/general/biostat/tools/fileviewer/index.html?file=",
     // logViewerPrefix =
     //   "https://xarprod.ondemand.sas.com/lsaf/webdav/repo/general/biostat/tools/logviewer/index.html",
     handleClickMenu = (event) => {
@@ -65,6 +160,12 @@ function App() {
     handleCloseMenu = () => {
       setAnchorEl(null);
     },
+    links = [
+      {
+        name: "Control Centre",
+        url: "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/control/index.html",
+      },
+    ],
     [openSnackbar, setOpenSnackbar] = useState(false),
     handleCloseSnackbar = (event, reason) => {
       if (reason === "clickaway") {
@@ -72,8 +173,6 @@ function App() {
       }
       setOpenSnackbar(false);
     },
-    [fontSize, setFontSize] = useState(10),
-    [title, setTitle] = useState("JSON File Editor"), // title of the screen
     [message, setMessage] = useState(""), // message to display in snackbar
     [anchorEl, setAnchorEl] = useState(null),
     [openInfo, setOpenInfo] = useState(false),
@@ -83,6 +182,14 @@ function App() {
     [key, setKey] = useState(null),
     [dataUrl, setDataUrl] = useState(null),
     [metaUrl, setMetaUrl] = useState(null),
+    renderCellExpand = (params) => {
+      return (
+        <GridCellExpand
+          value={params.value || ""}
+          width={params.colDef.computedWidth}
+        />
+      );
+    },
     Align = (props) => {
       const { myCustomHandler, align } = props;
       return (
@@ -231,30 +338,6 @@ function App() {
         setRows((oldRows) => oldRows.filter((row) => row.id !== key));
       }
     },
-    sortDataAndSetRows = (ddd, mmm) => {
-      const sortBy = Object.keys(mmm)
-        .map((k) => {
-          if (mmm[k].sort) return { key: k, sort: mmm[k].sort };
-          else return undefined;
-        })
-        .filter((s) => {
-          return s !== undefined;
-        });
-
-      if (sortBy.length > 0) {
-        sortBy.sort((a, b) => {
-          return a.sort - b.sort;
-        }); // sort by the sort order
-        // TODO: expand to sorting by more than 1 column
-        // TODO: currently sorts as string, but expand to support other types - dates work as strings
-        ddd.sort((a, b) => {
-          const sortKey = [sortBy[0].key];
-          return a[sortKey].localeCompare(b[sortKey]);
-          // return a[sortKey] - b[sortKey];
-        });
-      }
-      setRows(ddd.map((d, i) => ({ ...d, id: i }))); // add an id field to each row
-    },
     getData = async (d, m) => {
       console.log("getData", d, m);
       const dUrl = `${webDavPrefix}${d}`,
@@ -276,7 +359,6 @@ function App() {
             data2use = data[key];
           }
           // TODO: check if the data is an array of objects, if not, make it so
-          sortDataAndSetRows(data2use, metaData);
           setRows(data2use.map((d, i) => ({ ...d, id: i }))); // add an id field to each row
           setCols(
             Object.keys(data2use[0]).map((k) => {
@@ -305,6 +387,7 @@ function App() {
                 valueGetter: valueGetter,
                 valueOptions: valueOptions,
                 width: width,
+                renderCell: renderCellExpand,
               };
             })
           );
@@ -315,8 +398,8 @@ function App() {
   useEffect(() => {
     console.log("mode", mode, "href", href, "key", key);
     if (mode === "local") {
-      console.log("localData", localData, "localMeta", localMeta);
-      sortDataAndSetRows(localData, localMeta);
+      // console.log("localData", localData, "localMeta", localMeta);
+      setRows(localData.map((d, i) => ({ ...d, id: i }))); // add an id field to each row
       setCols(
         Object.keys(localData[0]).map((k) => {
           // console.log("k", k, "localMeta[k]", localMeta[k]);
@@ -349,9 +432,7 @@ function App() {
         })
       );
       setDataUrl(
-        "https://" +
-          host +
-          "/lsaf/webdav/repo/general/biostat/jobs/dashboard/dev/output/sapxlsx/sap_updates.json"
+        "https://xarprod.ondemand.sas.com/lsaf/webdav/repo/general/biostat/jobs/dashboard/dev/output/sapxlsx/sap_updates.json"
       );
     } else {
       const split = href.split("?"),
@@ -370,11 +451,6 @@ function App() {
         document.title = parsed.lsaf;
         url = `${webDavPrefix}${parsed.lsaf}`;
         setDataUrl(url);
-      }
-      if ("title" in parsed) {
-        const tempTitle = decodeURIComponent(parsed.title);
-        setTitle(tempTitle);
-        document.title = `${tempTitle} - ${parsed.lsaf}`;
       }
       if ("key" in parsed) {
         setKey(parsed.key);
@@ -421,7 +497,7 @@ function App() {
               boxShadow: 2,
             }}
           >
-            &nbsp;&nbsp;{title}&nbsp;&nbsp;
+            &nbsp;&nbsp;JSON File Editor&nbsp;&nbsp;
           </Box>
           <Tooltip title="Save JSON back to server (keyed files not yet supported)">
             <span>
@@ -463,22 +539,18 @@ function App() {
             Delete
           </Button>
           <Tooltip title="View data from LSAF as a JSON file">
-            <span>
-              <Button
-                variant="contained"
-                color="info"
-                startIcon={<Visibility />}
-                onClick={() => {
-                  window
-                    .open(`${fileViewerPrefix}${dataUrl}`, "_blank")
-                    .focus();
-                }}
-                size="small"
-                sx={{ m: 1 }}
-              >
-                Data
-              </Button>
-            </span>
+            <Button
+              variant="contained"
+              color="info"
+              startIcon={<Visibility />}
+              onClick={() => {
+                window.open(`${fileViewerPrefix}${dataUrl}`, "_blank").focus();
+              }}
+              size="small"
+              sx={{ m: 1 }}
+            >
+              Data
+            </Button>
           </Tooltip>
           <Tooltip title="View metadata from LSAF as a JSON file">
             <span>
@@ -498,27 +570,6 @@ function App() {
                 Meta
               </Button>
             </span>
-          </Tooltip>
-          <Tooltip title="Smaller font">
-            <IconButton
-              color="primary"
-              backgroundColor="secondary"
-              size="small"
-              onClick={() => setFontSize(fontSize - 1)}
-            >
-              <Remove />
-            </IconButton>
-          </Tooltip>
-          &nbsp;{fontSize}&nbsp;
-          <Tooltip title="Larger font">
-            <IconButton
-              color="primary"
-              backgroundColor="secondary"
-              size="small"
-              onClick={() => setFontSize(fontSize + 1)}
-            >
-              <Add />
-            </IconButton>
           </Tooltip>
           <Box
             sx={{
@@ -554,34 +605,28 @@ function App() {
           </Tooltip>
         </Toolbar>
       </AppBar>
-      <Grid container spacing={2}>
-        <Grid item xs={12}>
-          <DataGridPro
-            columns={cols}
-            rows={rows}
-            // rowHeight={22}
-            getRowHeight={() => "auto"}
-            density="compact"
-            // getRowId={(row) => row.__id__}
-            // autoHeight
-            pageSizeOptions={[25, 100, 1000]}
-            pagination
-            editMode="row"
-            slots={{ columnMenu: CustomColumnMenu, toolbar: GridToolbar }}
-            sx={{
-              width: window.innerWidth,
-              fontWeight: `fontSize=5`,
-              fontSize: { fontSize },
-              padding: 1,
-            }}
-            onCellEditStart={handleCellEditStart}
-            onCellEditStop={handleCellEditStop}
-            processRowUpdate={processRowUpdate}
-            apiRef={apiRef}
-          />
-        </Grid>
-      </Grid>
-
+      <DataGridPro
+        columns={cols}
+        rows={rows}
+        rowHeight={22}
+        density="compact"
+        // getRowId={(row) => row.__id__}
+        // autoHeight
+        pageSizeOptions={[25, 100, 1000]}
+        pagination
+        editMode="row"
+        slots={{ columnMenu: CustomColumnMenu }}
+        sx={{
+          width: window.innerWidth - 100,
+          fontWeight: "fontSize=5",
+          fontSize: "0.7em",
+          padding: 1,
+        }}
+        onCellEditStart={handleCellEditStart}
+        onCellEditStop={handleCellEditStop}
+        processRowUpdate={processRowUpdate}
+        apiRef={apiRef}
+      />
       <Snackbar
         open={openSnackbar}
         autoHideDuration={6000}
@@ -682,14 +727,14 @@ function App() {
           <b>Sample uses</b>
           <ul>
             <li>
-              <a href="https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/view/index.html?lsaf=/general/biostat/tools/view/test2.json">
-                View a JSON file, without metadata and therefore treating all
-                fields as strings
+              <a href="https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/view/index.html?lsaf=/general/biostat/tools/view/requests.json&meta=/general/biostat/tools/view/requests-metadata.json">
+                View a JSON file, using metadata to define the columns
               </a>
             </li>
             <li>
-              <a href="https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/view/index.html?lsaf=/general/biostat/tools/view/test2.json&meta=/general/biostat/tools/view/test2-metadata.json">
-                View a JSON file, using metadata to define the columns
+              <a href="https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/view/index.html?lsaf=/general/biostat/tools/view/requests.json">
+                View a JSON file, without metadata and therefore treating all
+                fields as strings
               </a>
             </li>
             <li>

@@ -1,0 +1,128 @@
+[
+  {
+    "id": "rep-events-dash",
+    "name": "🤡 Reporting Event Dashboard",
+    "description": "This is a new version of the reporting event dashboard. It provides an overview of reporting events which are currently active. There are links to study dashboards and file viewer for examining the files. ",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/rep-events-dash/index.html",
+    "group": "study"
+  },
+  {
+    "id": "search-tools",
+    "name": "🔍 Search Tools",
+    "description": "This displays the available search tools for TLF programs, outputs, ADaM datasets and SVG graphics.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/search_tools.html",
+    "group": "study"
+  },
+  {
+    "id": "studies",
+    "name": "🙍🏼‍♂️ Studies Resource Management",
+    "description": "Set key dates, assign resources and visualise this in Gantt charts.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/studies/index.html",
+    "group": "study"
+  },
+  {
+    "id": "gadam-jobs",
+    "name": "📊 GADAM jobs",
+    "description": "GADAM jobs that have run recently, and their status. Bars can be clicked on to open the log viewer for the selected job.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/gadam/documents/gadam_dshb/gadam_jobs/jobs.html",
+    "group": "gadam"
+  },
+  {
+    "id": "gadam-data-refresh",
+    "name": "🐶 GADAM Data Refresh Events",
+    "description": "Dashboard focusing on the refreshing of data for GADAM. Shows SDTM, ADAM and Reports along with what days they were run on. Clicking provides detail for files.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/gadam/documents/gadam_dshb/gadam_events/gadam_dshb.html",
+    "group": "gadam"
+  },
+  {
+    "id": "resources_monitoring",
+    "name": "📺 LSAF Resources Monitoring",
+    "description": "Resources are recorded to CSV files every 5 minutes. This app reads these files and displays the data in a dashboard.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/resources_monitoring02/index.html",
+    "group": "utils"
+  },
+  {
+    "id": "star-docs",
+    "name": "⭐ STAR documentation",
+    "description": "SAS code documentation generated automatically by Doxygen from the SAS code comments. This is hosted on SharePoint. It must be manually re-generated when the code changes, and then uploaded to SharePoint.",
+    "url": "https://argenxbvba.sharepoint.com/sites/Biostatistics/Programming%20documentation/html-1.3/index.aspx",
+    "group": "code"
+  },
+  {
+    "id": "studies-info",
+    "name": "🏠 Studies Info",
+    "description": "Study level dashboard showing how recently data has been updated.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/gadam/documents/gadam_dshb/study_info/studies_info.html",
+    "group": "study"
+  },
+  {
+    "id": "insight-studies",
+    "name": "🧠 Insight - studies",
+    "description": "Martijn's insight app.",
+    "url": "https://argenxbvba.sharepoint.com/sites/Biostatistics/insight/studies.aspx",
+    "group": "insight"
+  },
+  {
+    "id": "insight-tlfs",
+    "name": "⚙ Insight - TLF bundles",
+    "description": "Martijn's insight app.",
+    "url": "https://argenxbvba.sharepoint.com/sites/Biostatistics/Final%20TLF%20bundles/folder_tree.aspx",
+    "group": "insight"
+  },
+  {
+    "id": "lsaf-sync",
+    "name": "🐛 LSAF sync",
+    "description": "Analysis of people using the LSAF sync app. Shows what they have synced from LSAF to their PC.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/lsafsync/app/index.html",
+    "group": "study"
+  },
+  {
+    "id": "log-viewer",
+    "name": "🪓 Log viewer",
+    "description": "SAS log viewer which can be used to view logs on LSAF.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/webdav/repo/general/biostat/tools/logviewer2/index.html",
+    "group": "utils"
+  },
+  {
+    "id": "file-viewer",
+    "name": "👻 File viewer",
+    "description": "File viewer which can be used to view many files on LSAF. You can navigate the file system to find what you want.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/webdav/repo/general/biostat/tools/fileviewer/index.html",
+    "group": "utils"
+  },
+  {
+    "id": "resource-management",
+    "name": "🔬 Resource management",
+    "description": "This was the first attempt at making a dashboard for resource management. It is not used any more, but demonstrates some useful techniques that could be used in future apps.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/resourcemanagement/index.html",
+    "group": "utils"
+  },
+  {
+    "id": "study-dashboard",
+    "name": "🦙 Study Dashboard",
+    "description": "This is the dashboard for a specific study, but you can navigate to other studies from here.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/dashstudy/index.html",
+    "group": "study"
+  },
+  {
+    "id": "code-samples",
+    "name": "😯 Code samples for producing Graphics",
+    "description": "You can see a range of examples of graphs & figures here, produced with either SAS or R. You can then copy the code for use in your own work as a starting point.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/codesamples/index.html",
+    "group": "code"
+  },
+  {
+    "id": "intext",
+    "name": "🧨 In-text Tables",
+    "description": "See relationships between In-text tables, data and actual tables",
+    "url": "https://argenxbvba.sharepoint.com/sites/Biostatistics/Intext/intext.aspx",
+    "group": "code"
+  },
+  {
+    "id": "textviewer",
+    "name": "🔰 Text Viewer",
+    "description": "jean-Michel's Text viewer, which is very flexible working with any text files from LSAF, PC or clipboard.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/webdav/repo/general/biostat/tools/textviewer/index.html",
+    "group": "code"
+  }
+]
