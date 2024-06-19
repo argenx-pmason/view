@@ -1,65 +1,90 @@
 {
-  "compound": {
-    "type": "singleSelect",
-    "label": "Compound",
-    "width": 60,
-    "valueOptions": ["113", "117", "119"]
+  "#viewonly": true,
+  "submittedDateSAS": {
+    "type": "datetime",
+    "label": "Submitted",
+    "width": 140,
+    "pin": true
   },
-  "repEvent": {
-    "type": "singleSelect",
-    "label": "Rep Event",
-    "width": 60,
-    "valueOptions": ["brc", "dsur", "psur", "other"]
+  "completedDateSAS": {
+    "type": "datetime",
+    "label": "Completed",
+    "width": 140,
+    "sort": 2
   },
-  "requiredBy": { "type": "string", "label": "Requestor", "width": 100 },
-  "request": { "type": "string", "label": "Request", "width": 200 },
-  "dueDate": { "type": "date", "label": "Due date", "width": 90, "sort": 1 },
-  "delivery": { "type": "date", "label": "Delivery date", "width": 90 },
-
-  "programmer": {
-    "type": "singleSelect",
-    "label": "Programmer",
-    "width": 90,
-    "valueOptions": ["pschrauben", "sshipp"]
-  },
-  "Status": {
-    "type": "singleSelect",
-    "label": "Status",
-    "valueOptions": ["Not started", "Ongoing", "Ready for QC"],
-    "width": 120
-  },
-  "StatusComments": {
+  "job_name": { "type": "string", "label": "Job", "width": 220, "pin": true },
+  "study": { "type": "string", "label": "Study", "width": 120, "sort": 1 },
+  "summaryStatus": { "type": "string", "label": "Summary", "width": 90 },
+  "detailStatus": {
     "type": "string",
-    "label": "Status Comments",
-    "width": 200
-  },
-
-  "reviewer": {
-    "type": "singleSelect",
-    "label": "Reviewer",
+    "label": "Detail",
     "width": 90,
-    "valueOptions": ["sshipp", "pschrauben"]
+    "heatmap": {
+      "ERRORS": "#ffd6cc",
+      "WARNINGS": "#ffff4d",
+      "SUCCESSFUL": "#e6ffe6",
+      "SKIPPED": "#f2f2f2",
+      "CHECKIN ERROR": "#ff9999"
+    },
+    "filter": "distinct"
   },
-  "QCstatus": {
-    "type": "singleSelect",
-    "label": "Status",
-    "valueOptions": [
-      "Not started",
-      "Ongoing",
-      "QC comments",
-      "QC ok",
-      "Not QC"
-    ],
-    "width": 120
-  },
-  "QCComments": { "type": "string", "label": "Status Comments", "width": 200 },
-
-  "outputlocation": {
+  "duration": { "type": "time", "label": "Duration", "width": 70 },
+  "log_path": {
     "type": "string",
-    "label": "Output location",
-    "width": 200
+    "label": "Log",
+    "log": true,
+    "logver": "log_version",
+    "short": "open",
+    "width": 30
   },
-  "Input": { "type": "string", "label": "Input", "width": 200 },
-  "InputQC": { "type": "string", "label": "Input for QC", "width": 200 },
-  "QClocation": { "type": "string", "label": "QC location", "width": 200 }
+  "mnf_path": {
+    "type": "string",
+    "label": "Mnf",
+    "file": true,
+    "filever": "mnf_version",
+    "short": "open",
+    "width": 30
+  },
+  "path": {
+    "type": "string",
+    "label": "Job",
+    "file": true,
+    "short": "open",
+    "width": 30
+  },
+  "pgm_path1": {
+    "type": "string",
+    "label": "Pgm",
+    "file": true,
+    "filever": "pgm_version1",
+    "short": "open",
+    "width": 30
+  },
+  "lst_path": {
+    "type": "string",
+    "label": "Lst",
+    "file": true,
+    "short": "open",
+    "width": 30
+  },
+  "parent_path": {
+    "type": "string",
+    "label": "Parent",
+    "file": true,
+    "short": "open",
+    "width": 30
+  },
+  "product": { "type": "string", "label": "Product", "width": 70 },
+  "indic": { "type": "string", "label": "Indication", "width": 130 },
+  "mnf_version": { "type": "string", "label": "MNF", "width": 80 },
+  "pgm_version1": { "type": "string", "label": "PGM", "width": 80 },
+  "log_version": { "type": "string", "label": "LOG", "width": 80 },
+  "src": { "type": "string", "label": "Source", "width": 50 },
+  "duration_minutes": { "type": "number", "label": "Mins", "width": 50 },
+  "duration_hours": { "type": "number", "label": "Hours", "width": 50 },
+  "order": { "type": "number", "label": "Order", "width": 50 },
+  "helper": { "type": "string", "label": "Helper", "width": 250 },
+  "job_type": { "type": "string", "label": "Type" },
+  "date_sas": { "type": "date", "label": "Date", "width": 90 },
+  "dosubl_rc": { "type": "string", "label": "RC" }
 }

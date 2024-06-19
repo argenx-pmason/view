@@ -1,0 +1,25 @@
+{
+  "reporting_event_path": {
+    "type": "string",
+    "label": "Reporting Event Path",
+    "width": 500,
+    "sort": 1,
+    "file": true
+  },
+  "status": {
+    "type": "singleSelect",
+    "label": "Status",
+    "width": 90,
+    "filter": true,
+    "valueOptions": ["FINAL", "GADAM", "DEVELOPMENT", "TEST"]
+  },
+  "lot": { "type": "string", "label": "LOT", "width": 300 },
+  "lot_sheet": { "type": "string", "label": "sheet", "width": 80 },
+  "lot_exists": { "type": "string", "label": "exists", "width": 50 },
+  "sharepoint_list": {
+    "type": "string",
+    "label": "SharePoint list",
+    "width": 600,
+    "link": true
+  }
+}

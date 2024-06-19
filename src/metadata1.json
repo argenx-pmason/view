@@ -1,0 +1,90 @@
+{
+  "#viewonly": true,
+  "submittedDateSAS": {
+    "type": "datetime",
+    "label": "Submitted",
+    "width": 140,
+    "pin": true
+  },
+  "completedDateSAS": {
+    "type": "datetime",
+    "label": "Completed",
+    "width": 140,
+    "sort": 2
+  },
+  "job_name": { "type": "string", "label": "Job", "width": 220, "pin": true },
+  "study": { "type": "string", "label": "Study", "width": 120, "sort": 1 },
+  "summaryStatus": { "type": "string", "label": "Summary", "width": 90 },
+  "detailStatus": {
+    "type": "string",
+    "label": "Detail",
+    "width": 90,
+    "heatmap": {
+      "ERRORS": "#ffd6cc",
+      "WARNINGS": "#ffff4d",
+      "SUCCESSFUL": "#e6ffe6",
+      "SKIPPED": "#f2f2f2",
+      "CHECKIN ERROR": "#ff9999"
+    },
+    "filter": "distinct"
+  },
+  "duration": { "type": "time", "label": "Duration", "width": 70 },
+  "log_path": {
+    "type": "string",
+    "label": "Log",
+    "log": true,
+    "logver": "log_version",
+    "short": "open",
+    "width": 30
+  },
+  "mnf_path": {
+    "type": "string",
+    "label": "Mnf",
+    "file": true,
+    "filever": "mnf_version",
+    "short": "open",
+    "width": 30
+  },
+  "path": {
+    "type": "string",
+    "label": "Job",
+    "file": true,
+    "short": "open",
+    "width": 30
+  },
+  "pgm_path1": {
+    "type": "string",
+    "label": "Pgm",
+    "file": true,
+    "filever": "pgm_version1",
+    "short": "open",
+    "width": 30
+  },
+  "lst_path": {
+    "type": "string",
+    "label": "Lst",
+    "file": true,
+    "short": "open",
+    "width": 30
+  },
+  "parent_path": {
+    "type": "string",
+    "label": "Parent",
+    "file": true,
+    "short": "open",
+    "width": 30
+  },
+  "product": { "type": "string", "label": "Product", "width": 70 },
+  "indic": { "type": "string", "label": "Indication", "width": 130 },
+  "mnf_version": { "type": "string", "label": "MNF", "width": 80 },
+  "pgm_version1": { "type": "string", "label": "PGM", "width": 80 },
+  "log_version": { "type": "string", "label": "LOG", "width": 80 },
+  "src": { "type": "string", "label": "Source", "width": 50 },
+  "duration_minutes": { "type": "number", "label": "Mins", "width": 50 },
+  "duration_hours": { "type": "number", "label": "Hours", "width": 50 },
+  "order": { "type": "number", "label": "Order", "width": 50 },
+  "helper": { "type": "string", "label": "Helper", "width": 250 },
+  "job_type": { "type": "string", "label": "Type" },
+  "date_sas": { "type": "date", "label": "Date", "width": 90 },
+  "dosubl_rc": { "type": "string", "label": "RC" }
+}
