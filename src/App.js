@@ -59,7 +59,6 @@ import {
 } from "@mui/icons-material";
 import { v4 as uuidv4 } from "uuid";
 import MenuIcon from "@mui/icons-material/Menu";
-import { JSONTree } from "react-json-tree";
 import "./App.css";
 import localData from "./data.json";
 import localMeta from "./metadata.json";
@@ -98,6 +97,7 @@ function App() {
     [availableKeys, setAvailableKeys] = useState([]),
     [showBackups, setShowBackups] = useState(false),
     [openSnackbar, setOpenSnackbar] = useState(false),
+    [isArray, setIsArray] = useState(false),
     handleCloseSnackbar = (event, reason) => {
       if (reason === "clickaway") {
         return;
@@ -117,6 +117,7 @@ function App() {
     [metaUrl, setMetaUrl] = useState(null),
     [backups, setBackups] = useState([]),
     [checked, setChecked] = useState(false),
+    [originalData, setOriginalData] = useState([]),
     Align = (props) => {
       const { myCustomHandler, align } = props;
       return (
@@ -328,10 +329,18 @@ function App() {
       if (!file || !content) return;
       // drop id from each row in content
       const contentWithoutId = content.map((c) => {
-          delete c.id;
-          return c;
-        }),
+        delete c.id;
+        return c;
+      });
+      let tempContent;
+      // handle inserting table into the right place in keyed object
+      if (key) {
+        originalData[key] = contentWithoutId;
+        tempContent = JSON.stringify(originalData);
+        console.log("originalData - with changed table inserted", originalData);
+      } else {
         tempContent = JSON.stringify(contentWithoutId);
+      }
       backup(tempContent);
       // try to delete the file, in case it is there already, otherwise the PUT will not work
       fetch(file, {
@@ -370,7 +379,16 @@ function App() {
     [allowSave, setAllowSave] = useState(true),
     addRecord = (e) => {
       const id = uuidv4();
-      setRows((oldRows) => [...oldRows, { id: id }]);
+      let newRow = { id: id };
+      if (rows.length > 0) {
+        const row0 = rows[0];
+        Object.keys(row0).forEach((index) => {
+          newRow[index] = ".";
+        });
+        newRow.id = id;
+      }
+      // console.log("rows", rows, "newRow", newRow);
+      setRows([...rows, newRow]);
     },
     deleteRecord = (e) => {
       // setRows((oldRows) => [...oldRows, { id: id }]);
@@ -426,7 +444,16 @@ function App() {
     },
     loadBackup = (b) => {
       setShowBackups(false);
-      const tempRows = JSON.parse(localStorage.getItem(b)).map((r) => ({
+      const loadedText1 = decodeURIComponent(
+        localStorage.getItem(b).replace(/\\/g, "")
+      );
+      console.log("loadedText1", loadedText1);
+      //if string starts with quote then strip first and last characters from string
+      const loadedText2 = loadedText1.startsWith('"')
+        ? loadedText1.slice(1, -1)
+        : loadedText1;
+      console.log("loadedText2", loadedText2);
+      const tempRows = JSON.parse(loadedText2).map((r) => ({
         ...r,
         id: uuidv4(),
       }));
@@ -467,13 +494,43 @@ function App() {
       fetch(dUrl)
         .then((res) => res.json())
         .then((data) => {
-          const tempAvailableKeys = Object.keys(data);
+          setOriginalData(data);
+          const tempAvailableKeys = Object.keys(data),
+            isObject =
+              typeof data === "object" && !Array.isArray(data) && data !== null;
           setAvailableKeys(tempAvailableKeys);
+          // let k = null;
+          if (tempAvailableKeys.length > 0 && !key) {
+            if (isObject) {
+              // check each key to see if it is an array, and then use that
+              for (let i = 0; i < tempAvailableKeys.length; i++) {
+                const tempK = tempAvailableKeys[i];
+                if (data[tempK].constructor === Array) {
+                  k = tempAvailableKeys[i];
+                }
+              }
+            }
+            setKey(k);
+          }
           let data2use = data;
           if (k) {
             data2use = data[k];
           }
-          console.log("data2use", data2use, "key", k, "metaData", metaData);
+
+          const ia = Array.isArray(data2use);
+          console.log(
+            "ia",
+            ia,
+            "data2use",
+            data2use,
+            "key",
+            k,
+            "metaData",
+            metaData
+          );
+          setIsArray(ia);
+          if (!ia) return;
+
           // TODO: check if the data is an array of objects, if not, make it so
           sortDataAndSetRows(data2use, metaData);
           const tempRows = data2use.map((d, i) => ({ ...d, id: i })); // add an id field to each row
@@ -608,13 +665,39 @@ function App() {
     },
     handleLocal = () => {
       console.log("localData", localData, "localMeta", localMeta);
-      const tempAvailableKeys = Object.keys(localData);
-      console.log("tempAvailableKeys", tempAvailableKeys);
+      const tempAvailableKeys = Object.keys(localData),
+        isObject =
+          typeof localData === "object" &&
+          !Array.isArray(localData) &&
+          localData !== null;
       setAvailableKeys(tempAvailableKeys);
-      sortDataAndSetRows(localData, localMeta);
-      backup(localData);
+      let useData = localData,
+        k = null;
+      if (tempAvailableKeys.length > 0 && !key) {
+        if (isObject) {
+          // check each key to see if it is an array, and then use that
+          for (let i = 0; i < tempAvailableKeys.length; i++) {
+            const tempK = tempAvailableKeys[i];
+            if (localData[tempK].constructor === Array) {
+              k = tempAvailableKeys[i];
+            }
+          }
+        }
+        setKey(k);
+        useData = localData[k];
+      } else if (tempAvailableKeys.length > 0) {
+        useData = localData[key];
+      }
+      const ia = Array.isArray(useData);
+      setIsArray(ia);
+      console.log("ia", ia);
+      if (!ia) return;
+
+      sortDataAndSetRows(useData, localMeta);
+
+      backup(useData);
       const metaKeys = Object.keys(localMeta),
-        dataKeys = Object.keys(localData[0]),
+        dataKeys = Object.keys(useData[0]),
         combinedKeys = metaKeys
           .concat(dataKeys.filter((item) => metaKeys.indexOf(item) < 0))
           .filter((k) => k.startsWith("#") === false);
@@ -696,7 +779,7 @@ function App() {
           }
           if (filter) {
             const tempUniqueValues = Array.from(
-              new Set(localData.map((row) => row[k]))
+              new Set(useData.map((row) => row[k]))
             ).filter((v) => v !== undefined);
             setUniqueValues({ key: k, type: type, values: tempUniqueValues });
           }
@@ -763,7 +846,16 @@ function App() {
         const [k, v] = p.split("=");
         parsed[k] = v;
       });
-      console.log("split", split, "parms", parms, "parsed", parsed);
+      console.log(
+        "split",
+        split,
+        "parms",
+        parms,
+        "parsed",
+        parsed,
+        "metaUrl",
+        metaUrl
+      );
       if ("lsaf" in parsed) {
         setCurrent(parsed.lsaf);
         document.title = parsed.lsaf;
@@ -775,24 +867,32 @@ function App() {
         setTitle(tempTitle);
         document.title = `${tempTitle} - ${parsed.lsaf}`;
       }
-      if ("key" in parsed) {
+      if (!key && "key" in parsed) {
         setKey(parsed.key);
         setAllowSave(false);
       } else {
         setAllowSave(true);
       }
-      if ("meta" in parsed) {
+      if (!metaUrl && "meta" in parsed) {
         setMetaUrl(parsed.meta);
         url = `${webDavPrefix}${parsed.meta}`;
         setMetaUrl(url);
         setShowMeta(true);
-      } else {
+      } else if (!("meta" in parsed)) {
         setShowMeta(false);
       }
-      getData(parsed.lsaf, parsed.meta, parsed.key);
+      // use the key from the URL if it is there, otherwise use the key selected by user
+      let useKey = parsed.key;
+      if (key) useKey = key;
+      getData(parsed.lsaf, parsed.meta, useKey);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [href, mode, key]);
+
+  useEffect(() => {
+    if (!isArray) setChecked(true);
+    else setChecked(false);
+  }, [isArray]);
 
   return (
     <div className="App">
@@ -823,7 +923,7 @@ function App() {
           >
             &nbsp;&nbsp;{title}&nbsp;&nbsp;
           </Box>
-          <Tooltip title="Switch between main and JSON tree views">
+          <Tooltip title="Switch between editor and JSON views">
             <Switch
               checked={checked}
               onChange={() => {
@@ -832,7 +932,7 @@ function App() {
               inputProps={{ "aria-label": "controlled" }}
             />
           </Tooltip>
-          <Tooltip title="Save JSON back to server (keyed files not yet supported)">
+          <Tooltip title="Save JSON back to server">
             <span>
               <Button
                 variant="contained"
@@ -1034,8 +1134,14 @@ function App() {
               onPinnedColumnsChange={handlePinnedColumnsChange}
             />
           ) : (
-            <Box sx={{ mt: 6 }}>
-              <JSONTree data={rows} />
+            <Box sx={{ mt: 8 }}>
+              <pre>
+                {mode === "local"
+                  ? JSON.stringify(localData, null, "\t")
+                  : mode === "remote"
+                  ? JSON.stringify(originalData, null, "\t")
+                  : "No text to display."}
+              </pre>
             </Box>
           )}
         </Grid>
@@ -1106,7 +1212,7 @@ function App() {
       >
         <DialogTitle>Info about this screen</DialogTitle>
         <DialogContent>
-          <Box sx={{ color: "blue", fontSize: 10 }}>
+          <Box sx={{ color: "blue", fontSize: 11 }}>
             This tools works with JSON data that is arranged as an array of
             objects. That is the kind of JSON you get when using PROC JSON to
             export data from SAS. The metadata file is optional, but if it is

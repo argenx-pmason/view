@@ -24,6 +24,11 @@
   color: white;
 }
 
+pre {
+  text-align: left;
+  white-space: pre-line;
+}
+
 .App-link {
   color: #61dafb;
 }
