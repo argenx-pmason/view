@@ -14,6 +14,27 @@
     "group": "study"
   },
   {
+    "id": "sdtm-last",
+    "name": "💡 Source of SDTM data",
+    "description": "Choose where to take SDTM data from to copy to sdtm_last.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/sdtm-last/index.html",
+    "group": "study"
+  },
+  {
+    "id": "statprog",
+    "name": "🧯 Statistical Programming Dashboard",
+    "description": "Key items that require attention from Statistical Programming.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/statprog/index.html",
+    "group": "study"
+  },
+  {
+    "id": "view",
+    "name": "🎯 View",
+    "description": "View (& edit) JSON files.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/view/index.html?lsaf=/general/biostat/jobs/dashboard/dev/metadata/all.json&key=report1",
+    "group": "utils"
+  },
+  {
     "id": "studies",
     "name": "🙍🏼‍♂️ Studies Resource Management",
     "description": "Set key dates, assign resources and visualise this in Gantt charts.",
@@ -123,6 +144,13 @@
     "name": "🔰 Text Viewer",
     "description": "jean-Michel's Text viewer, which is very flexible working with any text files from LSAF, PC or clipboard.",
     "url": "https://xarprod.ondemand.sas.com/lsaf/webdav/repo/general/biostat/tools/textviewer/index.html",
+    "group": "code"
+  },
+  {
+    "id": "edit-localStorage",
+    "name": "❓ Edit localStorage",
+    "description": "Edit bookmarks from the browser's localStorage, which are then used with a bookmarklet to implement LSAF bookmarks.",
+    "url": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/edit-localstorage/index.html",
     "group": "code"
   }
 ]
