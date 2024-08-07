@@ -65,7 +65,7 @@ import localMeta from "./metadata.json";
 import links from "./links.json";
 // apply the license for data grid
 LicenseInfo.setLicenseKey(
-  "369a1eb75b405178b0ae6c2b51263cacTz03MTMzMCxFPTE3MjE3NDE5NDcwMDAsUz1wcm8sTE09c3Vic2NyaXB0aW9uLEtWPTI="
+  "6b1cacb920025860cc06bcaf75ee7a66Tz05NDY2MixFPTE3NTMyNTMxMDQwMDAsUz1wcm8sTE09c3Vic2NyaXB0aW9uLEtWPTI="
 );
 function App() {
   const apiRef = useGridApiRef(),
@@ -897,11 +897,11 @@ function App() {
   return (
     <div className="App">
       <AppBar position="fixed">
-        <Toolbar variant="dense" sx={{ backgroundColor: "#cccccc" }}>
+        <Toolbar variant="dense" sx={{ backgroundColor: "#f7f7f7" }}>
           <Tooltip title="Menu">
             <IconButton
               edge="start"
-              color="success"
+              color="info"
               sx={{ mr: 2 }}
               onClick={handleClickMenu}
               aria-label="menu"
@@ -914,11 +914,14 @@ function App() {
           </Tooltip>
           <Box
             sx={{
-              backgroundColor: "#eeeeee",
-              color: "green",
+              border: 1,
+              borderRadius: 2,
+              color: "black",
               fontWeight: "bold",
               boxShadow: 3,
-              fontSize: 16,
+              fontSize: 14,
+              height: 23,
+              padding: 0.3,
             }}
           >
             &nbsp;&nbsp;{title}&nbsp;&nbsp;
@@ -1046,7 +1049,7 @@ function App() {
               <Remove />
             </IconButton>
           </Tooltip>
-          &nbsp;{fontSize}&nbsp;
+          <Box sx={{ color: "#0288d1" }}>&nbsp;{fontSize}&nbsp;</Box>
           <Tooltip title="Larger font">
             <IconButton
               color="primary"
@@ -1061,13 +1064,21 @@ function App() {
           </Tooltip>
           <Box
             sx={{
-              color: "darkgreen",
+              color: "#0288d1",
+              backgroundColor: "#cdcdcd",
               fontWeight: "bold",
-              flexGrow: 0.5,
-              fontSize: "0.8em",
+              // fontSize: "0.8em",
               textAlign: "left",
+              border: 1,
+              borderRadius: 2,
+              // color: "black",
+              boxShadow: 3,
+              fontSize: 14,
+              height: 23,
+              padding: 0.3,
             }}
           >
+            &nbsp;
             {current ? (
               <span>
                 {current} {key ? ` with key: ${key}` : ""}
@@ -1077,6 +1088,7 @@ function App() {
             ) : (
               ""
             )}
+            &nbsp;
           </Box>
           <Box sx={{ flexGrow: 1 }}></Box>
           <Tooltip title="Load a backup">
