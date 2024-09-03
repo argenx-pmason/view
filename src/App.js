@@ -529,7 +529,7 @@ function App() {
             metaData
           );
           setIsArray(ia);
-          if (!ia) return;
+          if (!ia || data2use.length === 0) return;
 
           // TODO: check if the data is an array of objects, if not, make it so
           sortDataAndSetRows(data2use, metaData);
