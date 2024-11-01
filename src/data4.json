@@ -1,0 +1,36 @@
+[
+    {
+      "process": "sdtm_part1",
+      "status": "passed",
+      "date": "22OCT2024:08:00:12",
+      "username": "pmason",
+      "userfullname": "Phil Mason",
+      "comments": "passed with some minor issues",
+      "func_spec": "https://argenxbvba.sharepoint.com/:w:/r/sites/Biostatistics/Shared%20Documents/STAR%20processes/Functional%20Specifications/sdtm_last%20-%20part%201.docx",
+      "test_script": "https://argenxbvba.sharepoint.com/:x:/r/sites/Biostatistics/Shared%20Documents/STAR%20processes/Functional%20Specifications/sdtm_part1_test.xlsx",
+      "evidence": "/general/biostat/jobs/gadam_ongoing_studies/docs/sdtm_part1"
+    },
+
+    {
+      "process": "sdtm_part2",
+      "status": "passed",
+      "date": "22OCT2024:08:00:12",
+      "username": "pmason",
+      "userfullname": "Phil Mason",
+      "comments": "passed with some minor issues",
+      "func_spec": "https://argenxbvba.sharepoint.com/:w:/r/sites/Biostatistics/Shared%20Documents/STAR%20processes/Functional%20Specifications/sdtm_last%20-%20part%202.docx",
+      "test_script": "https://argenxbvba.sharepoint.com/:x:/r/sites/Biostatistics/Shared%20Documents/STAR%20processes/Functional%20Specifications/sdtm_part2_test.xlsx",
+      "evidence": "/general/biostat/jobs/gadam_ongoing_studies/docs/sdtm-last"
+    },
+    {
+      "process": "sdtm_part3",
+      "status": "passed",
+      "date": "22OCT2024:08:00:12",
+      "username": "pmason",
+      "userfullname": "Phil Mason",
+      "comments": "passed with some minor issues",
+      "func_spec": "https://argenxbvba.sharepoint.com/:w:/r/sites/Biostatistics/Shared%20Documents/STAR%20processes/Functional%20Specifications/sdtm_last%20-%20part%203.docx",
+      "test_script": "https://argenxbvba.sharepoint.com/:x:/r/sites/Biostatistics/Shared%20Documents/STAR%20processes/Functional%20Specifications/sdtm_part3_test.xlsx",
+      "evidence": "/general/biostat/jobs/gadam_ongoing_studies/docs/sdtm_part3"
+    }
+  ]

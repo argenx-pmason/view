@@ -94,6 +94,7 @@ function App() {
       setPinnedColumns(updatedPinnedColumns);
     }, []),
     [uniqueValues, setUniqueValues] = useState(null),
+    [datefilters, setDatefilters] = useState(null),
     [availableKeys, setAvailableKeys] = useState([]),
     [showBackups, setShowBackups] = useState(false),
     [openSnackbar, setOpenSnackbar] = useState(false),
@@ -174,9 +175,70 @@ function App() {
                 </Button>
               );
             })}
-          {uniqueValues && (
+          {datefilters &&
+            Array.from(Object.keys(datefilters)).map((df, id) => {
+              const u = datefilters[df],
+                k = Object.keys(u)[0],
+                v = u[k],
+                op = k === "lt" ? "<" : k === "gt" ? ">" : k;
+
+              // console.log("df", df, "u", u, "k", k, "v", v);
+              return (
+                <Button
+                  color="warning"
+                  variant="outlined"
+                  size="small"
+                  key={"key-" + id}
+                  sx={{ fontSize: 10, fontWeight: "bold", minWidth: 10 }}
+                  onClick={(e, id) => {
+                    console.log(
+                      apiRef,
+                      apiRef.current.state,
+                      apiRef.current.store
+                    );
+                    const currentFilter =
+                      apiRef.current.state.filter.filterModel.items;
+                    let today = new Date();
+                    let operator = "is";
+                    if (k === "lt" && !e.ctrlKey) {
+                      operator = "before";
+                      today.setDate(today.getDate() + v);
+                    } else if (k === "lt" && e.ctrlKey) {
+                      operator = "after";
+                      today.setDate(today.getDate() - v);
+                    }
+                    let compareValue = today.toISOString().slice(0, 10),
+                      newFilter = [
+                        ...currentFilter,
+                        {
+                          field: df,
+                          operator: operator,
+                          value: compareValue,
+                          id: id,
+                        },
+                      ];
+
+                    console.log(
+                      "operator",
+                      operator,
+                      "today",
+                      today,
+                      "compareValue",
+                      compareValue,
+                      "newFilter",
+                      newFilter
+                    );
+                    apiRef.current.upsertFilterItems(newFilter);
+                  }}
+                >
+                  {k ? df + op + v : "blank"}
+                </Button>
+              );
+            })}
+
+          {(uniqueValues || datefilters) && (
             <Button
-              color="success"
+              color="info"
               variant="contained"
               size="small"
               key={"clear"}
@@ -484,7 +546,8 @@ function App() {
     getData = async (d, m, k) => {
       console.log("getData", d, m, k);
       const dUrl = `${webDavPrefix}${d}`,
-        mUrl = `${webDavPrefix}${m}`;
+        mUrl = `${webDavPrefix}${m}`,
+        tempDatefilters = {};
       console.log("dUrl", dUrl, "mUrl", mUrl);
       let metaData = {};
       if (m) {
@@ -560,7 +623,9 @@ function App() {
                 fileverKeyToUse = null,
                 short = null,
                 heatmap = null,
+                multiselect = null,
                 filter = null,
+                datefilter = null,
                 pin = null,
                 multiline = false;
               if (metaData[k]) {
@@ -575,7 +640,9 @@ function App() {
                 fileverKeyToUse = metaData[k]?.filever;
                 short = metaData[k]?.short;
                 heatmap = metaData[k]?.heatmap;
+                multiselect = metaData[k]?.multiselect;
                 filter = metaData[k]?.filter;
+                datefilter = metaData[k]?.datefilter;
                 pin = metaData[k]?.pin;
                 multiline = metaData[k]?.multiline;
               }
@@ -620,6 +687,16 @@ function App() {
                   );
                 };
               }
+              // if (multiselect) {
+              //   renderCell = (params) => {
+              //     const color = heatmap[params.value] || "white";
+              //     return (
+              //       <Box sx={{ backgroundColor: color, flexGrow: 1 }}>
+              //         {params.value}
+              //       </Box>
+              //     );
+              //   };
+              // }
               if (filter) {
                 const tempUniqueValues = Array.from(
                   new Set(data2use.map((row) => row[k]))
@@ -629,6 +706,9 @@ function App() {
                   type: type,
                   values: tempUniqueValues,
                 });
+              }
+              if (datefilter) {
+                tempDatefilters[k] = datefilter;
               }
               if (pin) {
                 pins = [...pins, k];
@@ -662,6 +742,8 @@ function App() {
             })
           );
         });
+      console.log("tempDatefilters", tempDatefilters);
+      setDatefilters(tempDatefilters);
     },
     handleLocal = () => {
       console.log("localData", localData, "localMeta", localMeta);
@@ -669,7 +751,8 @@ function App() {
         isObject =
           typeof localData === "object" &&
           !Array.isArray(localData) &&
-          localData !== null;
+          localData !== null,
+        tempDatefilters = {};
       setAvailableKeys(tempAvailableKeys);
       let useData = localData,
         k = null;
@@ -684,7 +767,7 @@ function App() {
           }
         }
         setKey(k);
-        useData = localData[k];
+        if (k) useData = localData[k];
       } else if (tempAvailableKeys.length > 0) {
         useData = localData[key];
       }
@@ -717,9 +800,11 @@ function App() {
             logverKeyToUse = null,
             file = false,
             fileverKeyToUse = null,
+            link=false,
             short = null,
             heatmap = null,
             filter = null,
+            datefilter = null,
             pin = null,
             multiline = false;
           if (localMeta[k]) {
@@ -731,9 +816,11 @@ function App() {
             logverKeyToUse = localMeta[k].logver;
             file = localMeta[k].file;
             fileverKeyToUse = localMeta[k].filever;
+            link=localMeta[k].link;
             short = localMeta[k].short;
             heatmap = localMeta[k].heatmap;
             filter = localMeta[k].filter;
+            datefilter = localMeta[k].datefilter;
             pin = localMeta[k].pin;
             multiline = localMeta[k].multiline;
           }
@@ -744,7 +831,7 @@ function App() {
             };
           }
           let renderCell = null;
-          if (log || file) {
+          if (log || file || link) {
             renderCell = (params) => {
               const { row } = params,
                 logver = row[logverKeyToUse]
@@ -758,7 +845,7 @@ function App() {
                     ? logViewerPrefix + params.value + logver
                     : params.value > " " && file
                     ? fileViewerPrefix + params.value + filever
-                    : " ";
+                    : params.value;
               if (url.startsWith("http")) {
                 return (
                   <Link href={url} target="_blank" rel="noreferrer">
@@ -782,6 +869,9 @@ function App() {
               new Set(useData.map((row) => row[k]))
             ).filter((v) => v !== undefined);
             setUniqueValues({ key: k, type: type, values: tempUniqueValues });
+          }
+          if (datefilter) {
+            tempDatefilters[k] = datefilter;
           }
           if (pin) {
             pins = [...pins, k];
@@ -819,6 +909,8 @@ function App() {
           host +
           "/lsaf/webdav/repo/general/biostat/jobs/dashboard/dev/output/sapxlsx/sap_updates.json"
       );
+      console.log("tempDatefilters", tempDatefilters);
+      setDatefilters(tempDatefilters);
     };
 
   useEffect(() => {

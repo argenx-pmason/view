@@ -1,0 +1,45 @@
+{
+  "process": {
+    "type": "singleSelect",
+    "label": "Process",
+    "width": 100,
+    "valueOptions": ["sdtm_part1", "sdtm_part2", "sdtm_part3"],
+    "sort": 2
+  },
+  "status": {
+    "type": "singleSelect",
+    "label": "Status",
+    "width": 60,
+    "valueOptions": ["passed", "failed", "passed with comments"]
+  },
+  "date": { "type": "datetime", "label": "Date", "width": 180, "sort": 1 },
+  "username": { "type": "string", "label": "UserID", "width": 80 },
+  "userfullname": { "type": "string", "label": "Name", "width": 100 },
+  "comments": {
+    "type": "string",
+    "label": "Comments",
+    "width": 200,
+    "multiline": true
+  },
+  "func_spec": {
+    "type": "string",
+    "label": "Functional Specification",
+    "short": "open",
+    "link": true,
+    "width": 30
+  },
+  "test_script": {
+    "type": "link",
+    "label": "Test Script",
+    "short": "open",
+    "link": true,
+    "width": 30
+  },
+  "evidence": {
+    "type": "string",
+    "label": "Evidence",
+    "short": "open",
+    "file": true,
+    "width": 30
+  }
+}
