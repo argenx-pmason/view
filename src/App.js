@@ -62,6 +62,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import "./App.css";
 import localData from "./data.json";
 import localMeta from "./metadata.json";
+import localInfo from "./info.json";
 import links from "./links.json";
 // apply the license for data grid
 LicenseInfo.setLicenseKey(
@@ -93,6 +94,8 @@ function App() {
     handlePinnedColumnsChange = useCallback((updatedPinnedColumns) => {
       setPinnedColumns(updatedPinnedColumns);
     }, []),
+    [hiddenColumns, setHiddenColumns] = useState([]),
+    [hiddenColumnsObject, setHiddenColumnsObject] = useState({}),
     [uniqueValues, setUniqueValues] = useState(null),
     [datefilters, setDatefilters] = useState(null),
     [availableKeys, setAvailableKeys] = useState([]),
@@ -116,8 +119,10 @@ function App() {
     [key, setKey] = useState(null),
     [dataUrl, setDataUrl] = useState(null),
     [metaUrl, setMetaUrl] = useState(null),
+    [infoUrl, setInfoUrl] = useState(null),
     [backups, setBackups] = useState([]),
     [checked, setChecked] = useState(false),
+    [infoHtml, setInfoHtml] = useState(null),
     [originalData, setOriginalData] = useState([]),
     Align = (props) => {
       const { myCustomHandler, align } = props;
@@ -466,9 +471,11 @@ function App() {
         const dup = rows.filter((row) => row.id === key);
         extraRows.push({ ...dup[0], id: uuidv4() });
       }
-      setRows([...rows, ...extraRows]);
+      const tempRows = [...rows, ...extraRows];
+      console.log("tempRows", tempRows);
+      setRows(tempRows);
     };
-  const sortDataAndSetRows = (ddd, mmm) => {
+  const sortDataAndSetRows = (ddd, mmm, iii) => {
       // find any sort key that may be in the metadata
       const sortBy = Object.keys(mmm)
         .map((k) => {
@@ -502,7 +509,8 @@ function App() {
           return 0;
         });
       }
-      setRows(ddd.map((d, i) => ({ ...d, id: i }))); // add an id field to each row
+      setRows(ddd.map((d, i) => ({ ...d, id: uuidv4() }))); // add an id field to each row
+      if (iii && iii.length > 0) setInfoHtml(iii.join(" "));
     },
     loadBackup = (b) => {
       setShowBackups(false);
@@ -543,16 +551,22 @@ function App() {
         }
       }
     },
-    getData = async (d, m, k) => {
-      console.log("getData", d, m, k);
+    getData = async (d, m, i, k) => {
+      console.log("getData", "d", d, "m", m, "i", i, "k", k);
       const dUrl = `${webDavPrefix}${d}`,
         mUrl = `${webDavPrefix}${m}`,
+        iUrl = `${webDavPrefix}${i}`,
         tempDatefilters = {};
-      console.log("dUrl", dUrl, "mUrl", mUrl);
+      console.log("dUrl", dUrl, "mUrl", mUrl, "iUrl", iUrl);
       let metaData = {};
       if (m) {
         const res = await fetch(mUrl);
         metaData = await res.json();
+      }
+      let info = {};
+      if (i) {
+        const res = await fetch(iUrl);
+        info = await res.json();
       }
       fetch(dUrl)
         .then((res) => res.json())
@@ -589,13 +603,15 @@ function App() {
             "key",
             k,
             "metaData",
-            metaData
+            metaData,
+            "info",
+            info
           );
           setIsArray(ia);
           if (!ia || data2use.length === 0) return;
 
           // TODO: check if the data is an array of objects, if not, make it so
-          sortDataAndSetRows(data2use, metaData);
+          sortDataAndSetRows(data2use, metaData, info);
           const tempRows = data2use.map((d, i) => ({ ...d, id: i })); // add an id field to each row
           // backup(tempRows);
           setRows(tempRows);
@@ -609,6 +625,13 @@ function App() {
           // #viewonly - if this key is present, then the user cannot save the data back to the server
           metaKeys.forEach((k) => {
             if (k === "#viewonly") setAllowSave(false);
+          });
+          dataKeys.forEach((k) => {
+            console.log("dataKeys", dataKeys, "metaData[k]", metaData[k]);
+            if (metaData[k]?.hide) {
+              console.log("adding to hiddenColumns - ", k);
+              setHiddenColumns([...hiddenColumns, k]);
+            }
           });
           setCols(
             combinedKeys.map((k) => {
@@ -746,7 +769,14 @@ function App() {
       setDatefilters(tempDatefilters);
     },
     handleLocal = () => {
-      console.log("localData", localData, "localMeta", localMeta);
+      console.log(
+        "localData",
+        localData,
+        "localMeta",
+        localMeta,
+        "localInfo",
+        localInfo
+      );
       const tempAvailableKeys = Object.keys(localData),
         isObject =
           typeof localData === "object" &&
@@ -776,7 +806,7 @@ function App() {
       console.log("ia", ia);
       if (!ia) return;
 
-      sortDataAndSetRows(useData, localMeta);
+      sortDataAndSetRows(useData, localMeta, localInfo);
 
       backup(useData);
       const metaKeys = Object.keys(localMeta),
@@ -790,6 +820,13 @@ function App() {
       metaKeys.forEach((k) => {
         if (k === "#viewonly") setAllowSave(false);
       });
+      dataKeys.forEach((k) => {
+        console.log("dataKeys", dataKeys, "localMeta[k]", localMeta[k]);
+        if (localMeta[k]?.hide) {
+          console.log("adding to hiddenColumns - ", k);
+          setHiddenColumns([...hiddenColumns, k]);
+        }
+      });
       setCols(
         combinedKeys.map((k) => {
           let headerName = k,
@@ -800,7 +837,7 @@ function App() {
             logverKeyToUse = null,
             file = false,
             fileverKeyToUse = null,
-            link=false,
+            link = false,
             short = null,
             heatmap = null,
             filter = null,
@@ -816,7 +853,7 @@ function App() {
             logverKeyToUse = localMeta[k].logver;
             file = localMeta[k].file;
             fileverKeyToUse = localMeta[k].filever;
-            link=localMeta[k].link;
+            link = localMeta[k].link;
             short = localMeta[k].short;
             heatmap = localMeta[k].heatmap;
             filter = localMeta[k].filter;
@@ -946,7 +983,9 @@ function App() {
         "parsed",
         parsed,
         "metaUrl",
-        metaUrl
+        metaUrl,
+        "infoUrl",
+        infoUrl
       );
       if ("lsaf" in parsed) {
         setCurrent(parsed.lsaf);
@@ -973,10 +1012,22 @@ function App() {
       } else if (!("meta" in parsed)) {
         setShowMeta(false);
       }
+      if (!infoUrl && "info" in parsed) {
+        setInfoUrl(parsed.info);
+        url = `${webDavPrefix}${parsed.info}`;
+        setInfoUrl(url);
+      }
+      // if readonly is true or 1, then we dont allow saving
+      if ("readonly" in parsed) {
+        const tempAllowSave =
+          parsed.readonly === "1" || parsed.readonly === "true" ? false : true;
+        console.log("tempAllowSave", tempAllowSave);
+        setAllowSave(tempAllowSave);
+      }
       // use the key from the URL if it is there, otherwise use the key selected by user
       let useKey = parsed.key;
       if (key) useKey = key;
-      getData(parsed.lsaf, parsed.meta, useKey);
+      getData(parsed.lsaf, parsed.meta, parsed.info, useKey);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [href, mode, key]);
@@ -985,6 +1036,14 @@ function App() {
     if (!isArray) setChecked(true);
     else setChecked(false);
   }, [isArray]);
+
+  useEffect(() => {
+    if (hiddenColumns.length === 0) return;
+    const temp = {};
+    hiddenColumns.forEach((c) => (temp[c] = false));
+    console.log("hiddenColumns", hiddenColumns, "temp", temp);
+    setHiddenColumnsObject(temp);
+  }, [hiddenColumns]);
 
   return (
     <div className="App">
@@ -1236,6 +1295,11 @@ function App() {
               apiRef={apiRef}
               pinnedColumns={pinnedColumns}
               onPinnedColumnsChange={handlePinnedColumnsChange}
+              initialState={{
+                columns: {
+                  columnVisibilityModel: hiddenColumnsObject,
+                },
+              }}
             />
           ) : (
             <Box sx={{ mt: 8 }}>
@@ -1316,6 +1380,8 @@ function App() {
       >
         <DialogTitle>Info about this screen</DialogTitle>
         <DialogContent>
+          {infoHtml && <div dangerouslySetInnerHTML={{ __html: infoHtml }} />}
+          <h1>General Info</h1>
           <Box sx={{ color: "blue", fontSize: 11 }}>
             This tools works with JSON data that is arranged as an array of
             objects. That is the kind of JSON you get when using PROC JSON to

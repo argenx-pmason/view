@@ -1,0 +1,17 @@
+{
+  "compound": { "type": " string", "width": 100 },
+  "indication": { "type": " string", "width": 100 },
+  "study": { "type": " string", "width": 100 },
+  "lead_programmer": {
+    "type": "singleSelect",
+    "label": "Programmer",
+    "width": 40,
+    "valueOptions": ["pmason", "jbodart"]
+  },
+  "lead_statistician": {
+    "type": "singleSelect",
+    "label": "Statistician",
+    "width": 100,
+    "valueOptions": ["pmason", "jbodart"]
+  }
+}
