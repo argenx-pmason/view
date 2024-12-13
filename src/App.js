@@ -73,7 +73,11 @@ function App() {
     keepBackups = 20, // keep this many backups of data, which are saved each time you open the data in the app
     { href, host } = window.location, // get the URL so we can work out where we are running
     mode = href.startsWith("http://localhost") ? "local" : "remote",
-    webDavPrefix = "https://" + host + "/lsaf/webdav/repo", // prefix for webdav access to LSAF
+    lsafType =
+      href.includes("/webdav/work") || href.includes("/filedownload/work")
+        ? "work"
+        : "repo",
+    webDavPrefix = "https://" + host + "/lsaf/webdav/" + lsafType, // prefix for webdav access to LSAF
     fileViewerPrefix =
       "https://" +
       host +
@@ -91,6 +95,7 @@ function App() {
       setAnchorEl(null);
     },
     [pinnedColumns, setPinnedColumns] = useState({ left: [] }),
+    [globalMeta, setGlobalMeta] = useState({}),
     handlePinnedColumnsChange = useCallback((updatedPinnedColumns) => {
       setPinnedColumns(updatedPinnedColumns);
     }, []),
@@ -124,6 +129,92 @@ function App() {
     [checked, setChecked] = useState(false),
     [infoHtml, setInfoHtml] = useState(null),
     [originalData, setOriginalData] = useState([]),
+    [contextMenu, setContextMenu] = useState(null),
+    [selectedValue, setSelectedValue] = useState(null),
+    [selectedField, setSelectedField] = useState(null),
+    handleContextMenu = (event) => {
+      event.preventDefault();
+      const { target } = event,
+        value = target.innerText,
+        parent = target.parentNode,
+        field = target.getAttribute("data-field")
+          ? target.getAttribute("data-field")
+          : parent.getAttribute("data-field");
+      console.log(event, target, target.dataset, field, value, parent);
+      setSelectedValue(value);
+      setSelectedField(field);
+      setContextMenu(
+        contextMenu === null
+          ? {
+              mouseX: event.clientX + 2,
+              mouseY: event.clientY - 6,
+            }
+          : // repeated contextmenu when it is already open closes it with Chrome 84 on Ubuntu
+            // Other native context menus might behave different.
+            // With this behavior we prevent contextmenu from the backdrop to re-locale existing context menus.
+            null
+      );
+    },
+    handleClose = () => {
+      setContextMenu(null);
+    },
+    getType = (v) => {
+      if (mode === "local") {
+        console.log("localMeta", localMeta);
+        return localMeta?.[v]?.type;
+      } else if (mode === "remote") {
+        console.log("globalMeta", globalMeta);
+        return globalMeta?.[v]?.type;
+      } else {
+        return "string";
+      }
+    },
+    handleSet = () => {
+      setContextMenu(null);
+      console.log("set", selectedField, selectedValue);
+      let type = getType(selectedField),
+        id = 0;
+      apiRef.current.upsertFilterItems([]);
+      apiRef.current.upsertFilterItems([
+        {
+          field: selectedField,
+          operator: ["date", "datetime", "singleSelect"].includes(type)
+            ? "is"
+            : "equals",
+          value: selectedValue,
+          id: id,
+        },
+      ]);
+    },
+    handleAdd = () => {
+      setContextMenu(null);
+      console.log("add", selectedField, selectedValue);
+      let type = getType(selectedField),
+        whatWeHave = apiRef.current.store.value.filter.filterModel.items,
+        id = whatWeHave.length;
+      console.log("id", id, "whatWeHave", whatWeHave);
+      apiRef.current.upsertFilterItems([
+        ...whatWeHave,
+        {
+          field: selectedField,
+          operator: ["date", "datetime", "singleSelect"].includes(type)
+            ? "is"
+            : "equals",
+          value: selectedValue,
+          id: id,
+        },
+      ]);
+    },
+    handleClear = () => {
+      setContextMenu(null);
+      apiRef.current.upsertFilterItems([]);
+    },
+    // handleSave = () => {
+    //   setContextMenu(null);
+    // },
+    // handleLoad = () => {
+    //   setContextMenu(null);
+    // },
     Align = (props) => {
       const { myCustomHandler, align } = props;
       return (
@@ -422,6 +513,8 @@ function App() {
             body: tempContent,
           })
             .then((response) => {
+              // add the id back
+              setRows(content.map((d, i) => ({ ...d, id: uuidv4() })));
               setMessage(response.ok ? "File saved" : "File not saved");
               setOpenSnackbar(true);
               response.text().then(function (text) {
@@ -429,12 +522,16 @@ function App() {
               });
             })
             .catch((err) => {
+              // add the id back
+              setRows(content.map((d, i) => ({ ...d, id: uuidv4() })));
               setMessage(err);
               setOpenSnackbar(true);
               console.log("PUT err: ", err);
             });
         })
         .catch((err) => {
+          // add the id back
+          setRows(content.map((d, i) => ({ ...d, id: uuidv4() })));
           setMessage(
             "DELETE was attempted before the new version was saved - but the DELETE failed. (see console)"
           );
@@ -551,6 +648,7 @@ function App() {
         }
       }
     },
+    [lastModified, setLastModified] = useState(null),
     getData = async (d, m, i, k) => {
       console.log("getData", "d", d, "m", m, "i", i, "k", k);
       const dUrl = `${webDavPrefix}${d}`,
@@ -569,7 +667,11 @@ function App() {
         info = await res.json();
       }
       fetch(dUrl)
-        .then((res) => res.json())
+        .then((res) => {
+          const lastModified = res.headers.get("Last-Modified");
+          setLastModified(lastModified);
+          return res.json();
+        })
         .then((data) => {
           setOriginalData(data);
           const tempAvailableKeys = Object.keys(data),
@@ -609,6 +711,7 @@ function App() {
           );
           setIsArray(ia);
           if (!ia || data2use.length === 0) return;
+          setGlobalMeta(metaData);
 
           // TODO: check if the data is an array of objects, if not, make it so
           sortDataAndSetRows(data2use, metaData, info);
@@ -627,7 +730,7 @@ function App() {
             if (k === "#viewonly") setAllowSave(false);
           });
           dataKeys.forEach((k) => {
-            console.log("dataKeys", dataKeys, "metaData[k]", metaData[k]);
+            // console.log("dataKeys", dataKeys, "metaData[k]", metaData[k]);
             if (metaData[k]?.hide) {
               console.log("adding to hiddenColumns - ", k);
               setHiddenColumns([...hiddenColumns, k]);
@@ -944,7 +1047,9 @@ function App() {
       setDataUrl(
         "https://" +
           host +
-          "/lsaf/webdav/repo/general/biostat/jobs/dashboard/dev/output/sapxlsx/sap_updates.json"
+          "/lsaf/webdav/" +
+          lsafType +
+          "/general/biostat/jobs/dashboard/dev/output/sapxlsx/sap_updates.json"
       );
       console.log("tempDatefilters", tempDatefilters);
       setDatefilters(tempDatefilters);
@@ -1213,34 +1318,36 @@ function App() {
               <Add />
             </IconButton>
           </Tooltip>
-          <Box
-            sx={{
-              color: "#0288d1",
-              backgroundColor: "#cdcdcd",
-              fontWeight: "bold",
-              // fontSize: "0.8em",
-              textAlign: "left",
-              border: 1,
-              borderRadius: 2,
-              // color: "black",
-              boxShadow: 3,
-              fontSize: 14,
-              height: 23,
-              padding: 0.3,
-            }}
-          >
-            &nbsp;
-            {current ? (
-              <span>
-                {current} {key ? ` with key: ${key}` : ""}
-              </span>
-            ) : mode === "local" ? (
-              "Running locally"
-            ) : (
-              ""
-            )}
-            &nbsp;
-          </Box>
+          <Tooltip title={lastModified || "Data comes from this file"}>
+            <Box
+              sx={{
+                color: "#0288d1",
+                backgroundColor: "#cdcdcd",
+                fontWeight: "bold",
+                // fontSize: "0.8em",
+                textAlign: "left",
+                border: 1,
+                borderRadius: 2,
+                // color: "black",
+                boxShadow: 3,
+                fontSize: 14,
+                height: 23,
+                padding: 0.3,
+              }}
+            >
+              &nbsp;
+              {current ? (
+                <span>
+                  {current} {key ? ` with key: ${key}` : ""}
+                </span>
+              ) : mode === "local" ? (
+                "Running locally"
+              ) : (
+                ""
+              )}
+              &nbsp;
+            </Box>
+          </Tooltip>
           <Box sx={{ flexGrow: 1 }}></Box>
           <Tooltip title="Load a backup">
             <IconButton
@@ -1269,6 +1376,7 @@ function App() {
       <Grid container spacing={2}>
         <Grid item xs={12}>
           {!checked ? (
+            // <Box onContextMenu={handleContextMenu}>
             <DataGridPro
               columns={cols}
               rows={rows}
@@ -1281,6 +1389,12 @@ function App() {
               pagination
               editMode="row"
               slots={{ columnMenu: CustomColumnMenu, toolbar: CustomToolbar }}
+              slotProps={{
+                row: {
+                  onContextMenu: (e) => handleContextMenu(e),
+                  style: { cursor: "context-menu" },
+                },
+              }}
               sx={{
                 width: window.innerWidth,
                 height: window.innerHeight - 50,
@@ -1302,6 +1416,7 @@ function App() {
               }}
             />
           ) : (
+            // </Box>
             <Box sx={{ mt: 8 }}>
               <pre>
                 {mode === "local"
@@ -1315,12 +1430,30 @@ function App() {
         </Grid>
       </Grid>
 
+      <Menu
+        open={contextMenu !== null}
+        onClose={handleClose}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          contextMenu !== null
+            ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+            : undefined
+        }
+      >
+        <MenuItem onClick={handleSet}>Set</MenuItem>
+        <MenuItem onClick={handleAdd}>Add</MenuItem>
+        <MenuItem onClick={handleClear}>Clear</MenuItem>
+        {/* <MenuItem onClick={handleSave}>Save</MenuItem>
+        <MenuItem onClick={handleLoad}>Load</MenuItem> */}
+      </Menu>
+
       <Snackbar
         open={openSnackbar}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
         message={message}
       />
+
       <Menu
         anchorEl={anchorEl}
         id="link-menu"
@@ -1349,6 +1482,7 @@ function App() {
           </MenuItem>
         ))}
       </Menu>
+
       {/* Dialog with General info about this screen */}
       <Dialog
         fullWidth
@@ -1371,6 +1505,7 @@ function App() {
           ))}
         </DialogContent>
       </Dialog>
+
       {/* Dialog with General info about this screen */}
       <Dialog
         fullWidth
@@ -1479,6 +1614,17 @@ function App() {
               </Link>
             </li>
           </ul>
+          <hr/>
+          <Link
+            variant="h3"
+            href={
+              "https://argenxbvba.sharepoint.com/:w:/r/sites/Biostatistics/_layouts/15/Doc.aspx?sourcedoc=%7BB2358A9E-83A1-47DE-91FB-FD5C3C2CA62D%7D&file=View%20(web%20app).docx&action=default&mobileredirect=true"
+            }
+            target="_blank"
+            rel="noopener"
+          >
+            User Guide
+          </Link>
         </DialogContent>
       </Dialog>
     </div>
