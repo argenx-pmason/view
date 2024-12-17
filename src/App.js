@@ -88,6 +88,7 @@ function App() {
       "https://" +
       host +
       "/lsaf/filedownload/sdd:/general/biostat/tools/logviewer/index.html?log=",
+    params = new URLSearchParams(document.location.search),
     handleClickMenu = (event) => {
       setAnchorEl(event.currentTarget);
     },
@@ -107,6 +108,7 @@ function App() {
     [showBackups, setShowBackups] = useState(false),
     [openSnackbar, setOpenSnackbar] = useState(false),
     [isArray, setIsArray] = useState(false),
+    [quickFilterValues, setQuickFilterValues] = useState(null),
     handleCloseSnackbar = (event, reason) => {
       if (reason === "clickaway") {
         return;
@@ -731,10 +733,24 @@ function App() {
           });
           dataKeys.forEach((k) => {
             // console.log("dataKeys", dataKeys, "metaData[k]", metaData[k]);
+            const tempHiddenColumns = hiddenColumns;
             if (metaData[k]?.hide) {
               console.log("adding to hiddenColumns - ", k);
-              setHiddenColumns([...hiddenColumns, k]);
+              tempHiddenColumns.push(k);
             }
+            console.log(tempHiddenColumns);
+            setHiddenColumns(tempHiddenColumns);
+            const tempHiddenColumnsObject = {};
+            tempHiddenColumns.forEach(
+              (c) => (tempHiddenColumnsObject[c] = false)
+            );
+            console.log(
+              "tempHiddenColumns",
+              tempHiddenColumns,
+              "tempHiddenColumnsObject",
+              tempHiddenColumnsObject
+            );
+            setHiddenColumnsObject(tempHiddenColumnsObject);
           });
           setCols(
             combinedKeys.map((k) => {
@@ -753,6 +769,8 @@ function App() {
                 filter = null,
                 datefilter = null,
                 pin = null,
+                tooltip = null,
+                description = null,
                 multiline = false;
               if (metaData[k]) {
                 headerName = metaData[k].label;
@@ -770,6 +788,8 @@ function App() {
                 filter = metaData[k]?.filter;
                 datefilter = metaData[k]?.datefilter;
                 pin = metaData[k]?.pin;
+                tooltip = metaData[k]?.tooltip;
+                description = metaData[k]?.description;
                 multiline = metaData[k]?.multiline;
               }
 
@@ -780,6 +800,13 @@ function App() {
                 };
               }
               let renderCell = null;
+              if (tooltip) {
+                renderCell = (params) => {
+                  const { row } = params,
+                    tt = row[tooltip];
+                  return <Tooltip title={tt}>{params.value}</Tooltip>;
+                };
+              }
               if (log || file || link) {
                 renderCell = (params) => {
                   const { row } = params,
@@ -850,6 +877,7 @@ function App() {
                 valueOptions: valueOptions,
                 renderCell: renderCell,
                 width: width,
+                description: description,
               };
               if (multiline) {
                 columnDefinition = {
@@ -861,6 +889,7 @@ function App() {
                   valueOptions: valueOptions,
                   renderCell: renderCell,
                   width: width,
+                  description: description,
                   ...multilineColumn,
                 };
               }
@@ -925,10 +954,23 @@ function App() {
       });
       dataKeys.forEach((k) => {
         console.log("dataKeys", dataKeys, "localMeta[k]", localMeta[k]);
+        // hide
+        const tempHiddenColumns = hiddenColumns;
         if (localMeta[k]?.hide) {
           console.log("adding to hiddenColumns - ", k);
-          setHiddenColumns([...hiddenColumns, k]);
+          tempHiddenColumns.push(k);
         }
+        console.log("tempHiddenColumns", tempHiddenColumns);
+        setHiddenColumns(tempHiddenColumns);
+        const tempHiddenColumnsObject = {};
+        tempHiddenColumns.forEach((c) => (tempHiddenColumnsObject[c] = false));
+        console.log(
+          "tempHiddenColumns",
+          tempHiddenColumns,
+          "tempHiddenColumnsObject",
+          tempHiddenColumnsObject
+        );
+        setHiddenColumnsObject(tempHiddenColumnsObject);
       });
       setCols(
         combinedKeys.map((k) => {
@@ -946,6 +988,8 @@ function App() {
             filter = null,
             datefilter = null,
             pin = null,
+            tooltip = null,
+            description = null,
             multiline = false;
           if (localMeta[k]) {
             headerName = localMeta[k].label;
@@ -962,6 +1006,8 @@ function App() {
             filter = localMeta[k].filter;
             datefilter = localMeta[k].datefilter;
             pin = localMeta[k].pin;
+            tooltip = localMeta[k].tooltip;
+            description = localMeta[k].description;
             multiline = localMeta[k].multiline;
           }
           let valueGetter = null;
@@ -971,6 +1017,13 @@ function App() {
             };
           }
           let renderCell = null;
+          if (tooltip) {
+            renderCell = (params) => {
+              const { row } = params,
+                tt = row[tooltip];
+              return <Tooltip title={tt}>{params.value}</Tooltip>;
+            };
+          }
           if (log || file || link) {
             renderCell = (params) => {
               const { row } = params,
@@ -996,6 +1049,7 @@ function App() {
             };
           } else if (heatmap) {
             renderCell = (params) => {
+              console.log("params", params);
               const color = heatmap[params.value] || "white";
               return (
                 <Box sx={{ backgroundColor: color, flexGrow: 1 }}>
@@ -1027,6 +1081,7 @@ function App() {
             valueOptions: valueOptions,
             renderCell: renderCell,
             width: width,
+            description: description,
           };
           if (multiline) {
             columnDefinition = {
@@ -1038,6 +1093,7 @@ function App() {
               valueOptions: valueOptions,
               renderCell: renderCell,
               width: width,
+              description: description,
               ...multilineColumn,
             };
           }
@@ -1129,6 +1185,12 @@ function App() {
         console.log("tempAllowSave", tempAllowSave);
         setAllowSave(tempAllowSave);
       }
+      if ("filter" in parsed) {
+        const tempQf = [params.get("filter")];
+        setQuickFilterValues(tempQf);
+        console.log("tempQf", tempQf);
+        setQuickFilterValues(tempQf);
+      }
       // use the key from the URL if it is there, otherwise use the key selected by user
       let useKey = parsed.key;
       if (key) useKey = key;
@@ -1142,13 +1204,13 @@ function App() {
     else setChecked(false);
   }, [isArray]);
 
-  useEffect(() => {
-    if (hiddenColumns.length === 0) return;
-    const temp = {};
-    hiddenColumns.forEach((c) => (temp[c] = false));
-    console.log("hiddenColumns", hiddenColumns, "temp", temp);
-    setHiddenColumnsObject(temp);
-  }, [hiddenColumns]);
+  // useEffect(() => {
+  //   if (hiddenColumns.length === 0) return;
+  //   const temp = {};
+  //   hiddenColumns.forEach((c) => (temp[c] = false));
+  //   console.log("hiddenColumns", hiddenColumns, "temp", temp);
+  //   setHiddenColumnsObject(temp);
+  // }, [hiddenColumns]);
 
   return (
     <div className="App">
@@ -1413,6 +1475,12 @@ function App() {
                 columns: {
                   columnVisibilityModel: hiddenColumnsObject,
                 },
+                filter: {
+                  filterModel: {
+                    items: [],
+                    quickFilterValues: quickFilterValues,
+                  },
+                },
               }}
             />
           ) : (
@@ -1573,7 +1641,17 @@ function App() {
               <b>meta</b> - the location of the metadata file to load
             </li>
             <li>
+              <b>info</b> - location of JSON file with HTML to use containing
+              information about the data in this view
+            </li>
+            <li>
               <b>key</b> - the key of the JSON file to load
+            </li>
+            <li>
+              <b>filter</b> - specifies some text to use in the quick filter
+            </li>
+            <li>
+              <b>readonly</b> - Y means that file can't be saved
             </li>
           </ul>
           <b>Sample uses</b>
@@ -1614,7 +1692,7 @@ function App() {
               </Link>
             </li>
           </ul>
-          <hr/>
+          <hr />
           <Link
             variant="h3"
             href={
