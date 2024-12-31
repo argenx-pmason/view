@@ -3,8 +3,7 @@
   "submittedDateSAS": {
     "type": "datetime",
     "label": "Submitted",
-    "width": 140,
-    "pin": true
+    "width": 140
   },
   "completedDateSAS": {
     "type": "datetime",
@@ -13,16 +12,36 @@
     "sort": 2,
     "description": "This column is for the completed date"
   },
-  "job_name": { "type": "string", "label": "Job", "width": 220, "pin": true },
+  "job_name": {
+    "type": "string",
+    "label": "Job",
+    "width": 220,
+    "tooltip": "summaryStatus"
+  },
+  "QC_changed": {
+    "type": "datetime",
+    "label": "QC changed",
+    "width": 140,
+    "timeStamp": true,
+    "variableChange": "job_name"
+  },
   "study": {
     "type": "string",
     "label": "Study",
     "width": 120,
     "sort": 1,
     "tooltip": "detailStatus",
-    "description": "This column is for the study"
+    "description": "This column is for the study",
+    "pin": true,
+    "link": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/sdtm-last/index.html?study={{linkvar}}",
+    "linkvar": "study"
   },
-  "summaryStatus": { "type": "string", "label": "Summary", "width": 90 },
+  "summaryStatus": {
+    "type": "string",
+    "label": "Summary",
+    "width": 90,
+    "filter": true
+  },
   "detailStatus": {
     "type": "string",
     "label": "Detail",
@@ -34,7 +53,8 @@
       "SKIPPED": "#f2f2f2",
       "CHECKIN ERROR": "#ff9999"
     },
-    "filter": "distinct"
+    "heatmapCondition": { "job_name": { "NE": "pp" } },
+    "filter": true
   },
   "duration": { "type": "time", "label": "Duration", "width": 70 },
   "log_path": {
@@ -82,17 +102,43 @@
     "short": "open",
     "width": 30
   },
-  "product": { "type": "string", "label": "Product", "width": 70 },
-  "indic": { "type": "string", "label": "Indication", "width": 130 },
+  "product": {
+    "type": "string",
+    "label": "Product",
+    "width": 70
+  },
+  "indic": {
+    "type": "string",
+    "label": "Indication",
+    "width": 130
+  },
   "mnf_version": { "type": "string", "label": "MNF", "width": 80 },
   "pgm_version1": { "type": "string", "label": "PGM", "width": 80 },
   "log_version": { "type": "string", "label": "LOG", "width": 80 },
   "src": { "type": "string", "label": "Source", "width": 50 },
-  "duration_minutes": { "type": "number", "label": "Mins", "width": 50 },
+  "duration_minutes": {
+    "type": "number",
+    "label": "Mins",
+    "width": 50,
+    "heatmapRange": [
+      { "from": 5, "to": 10, "color": "#ff9999" },
+      { "from": 10, "to": 50, "color": "#ffff4d" },
+      { "from": 50, "color": "#e6ffe6" }
+    ]
+  },
   "duration_hours": { "type": "number", "label": "Hours", "width": 50 },
-  "order": { "type": "number", "label": "Order", "width": 50 },
+  "order": {
+    "type": "number",
+    "label": "Order",
+    "width": 50
+  },
   "helper": { "type": "string", "label": "Helper", "width": 250 },
   "job_type": { "type": "string", "label": "Type" },
-  "date_sas": { "type": "date", "label": "Date", "width": 90 },
+  "date_sas": {
+    "type": "date",
+    "label": "Date",
+    "width": 90,
+    "datefilter": { "lt": 30 }
+  },
   "dosubl_rc": { "type": "string", "label": "RC" }
 }

@@ -58,6 +58,7 @@ import {
   CloudDownload,
 } from "@mui/icons-material";
 import { v4 as uuidv4 } from "uuid";
+import { usePapaParse } from "react-papaparse";
 import MenuIcon from "@mui/icons-material/Menu";
 import "./App.css";
 import localData from "./data.json";
@@ -70,6 +71,7 @@ LicenseInfo.setLicenseKey(
 );
 function App() {
   const apiRef = useGridApiRef(),
+    { readString } = usePapaParse(),
     keepBackups = 20, // keep this many backups of data, which are saved each time you open the data in the app
     { href, host } = window.location, // get the URL so we can work out where we are running
     mode = href.startsWith("http://localhost") ? "local" : "remote",
@@ -97,12 +99,14 @@ function App() {
     },
     [pinnedColumns, setPinnedColumns] = useState({ left: [] }),
     [globalMeta, setGlobalMeta] = useState({}),
+    [globalFilters, setGlobalFilters] = useState([]),
+    tempGlobalFilters = [],
     handlePinnedColumnsChange = useCallback((updatedPinnedColumns) => {
       setPinnedColumns(updatedPinnedColumns);
     }, []),
     [hiddenColumns, setHiddenColumns] = useState([]),
     [hiddenColumnsObject, setHiddenColumnsObject] = useState({}),
-    [uniqueValues, setUniqueValues] = useState(null),
+    // [uniqueValues, setUniqueValues] = useState([]),
     [datefilters, setDatefilters] = useState(null),
     [availableKeys, setAvailableKeys] = useState([]),
     [showBackups, setShowBackups] = useState(false),
@@ -239,52 +243,64 @@ function App() {
           <GridToolbarFilterButton />
           <GridToolbarDensitySelector />
           <GridToolbarExport />
-          {uniqueValues &&
-            Array.from(uniqueValues.values).map((u) => {
-              return (
-                <Button
-                  color="success"
-                  variant="outlined"
-                  size="small"
-                  key={"key-" + u}
-                  sx={{ fontSize: 10, fontWeight: "bold", minWidth: 10 }}
-                  onClick={(e, id) => {
-                    // const column = apiRef.current.getColumn("request");console.log("column", column);
-                    apiRef.current.upsertFilterItems([
-                      {
-                        field: uniqueValues.key,
-                        operator:
-                          ["date", "datetime", "singleSelect"].includes(
-                            uniqueValues.type
-                          ) && !e.ctrlKey
-                            ? "is"
-                            : ["date", "datetime", "singleSelect"].includes(
-                                uniqueValues.type
-                              ) && e.ctrlKey
-                            ? "not"
-                            : "contains",
-                        value: u,
-                        id: id,
-                      },
-                    ]);
-                  }}
-                >
-                  {u ? u : "blank"}
-                </Button>
-              );
+          {globalFilters.length > 0 &&
+            globalFilters.map((uv, uvn) => {
+              return Array.from(uv.values).map((u) => {
+                return (
+                  <Button
+                    color={
+                      uvn === 0
+                        ? "success"
+                        : uvn === 0
+                        ? "warning"
+                        : uvn === 1
+                        ? "secondary"
+                        : uvn === 2
+                        ? "error"
+                        : "info"
+                    }
+                    variant="outlined"
+                    size="small"
+                    key={"key-" + u}
+                    sx={{ fontSize: 10, fontWeight: "bold", minWidth: 10 }}
+                    onClick={(e, id) => {
+                      apiRef.current.upsertFilterItems([
+                        {
+                          field: uv.key,
+                          operator:
+                            ["date", "datetime", "singleSelect"].includes(
+                              uv.type
+                            ) && !e.ctrlKey
+                              ? "is"
+                              : ["date", "datetime", "singleSelect"].includes(
+                                  uv.type
+                                ) && e.ctrlKey
+                              ? "not"
+                              : "contains",
+                          value: u,
+                          id: id,
+                        },
+                      ]);
+                    }}
+                  >
+                    {u ? u : "blank"}
+                  </Button>
+                );
+              });
             })}
+
           {datefilters &&
             Array.from(Object.keys(datefilters)).map((df, id) => {
               const u = datefilters[df],
                 k = Object.keys(u)[0],
                 v = u[k],
-                op = k === "lt" ? "<" : k === "gt" ? ">" : k;
+                op = k === "lt" ? "is before" : k === "gt" ? "is after" : k;
 
-              // console.log("df", df, "u", u, "k", k, "v", v);
+              console.log("df", df, "u", u, "k", k, "v", v, "op", op);
               return (
                 <Button
                   color="warning"
-                  variant="outlined"
+                  variant="contained"
                   size="small"
                   key={"key-" + id}
                   sx={{ fontSize: 10, fontWeight: "bold", minWidth: 10 }}
@@ -329,12 +345,12 @@ function App() {
                     apiRef.current.upsertFilterItems(newFilter);
                   }}
                 >
-                  {k ? df + op + v : "blank"}
+                  {k ? df + " " + k + " " + v : "blank"}
                 </Button>
               );
             })}
 
-          {(uniqueValues || datefilters) && (
+          {(datefilters || globalFilters.length > 0) && (
             <Button
               color="info"
               variant="contained"
@@ -436,7 +452,6 @@ function App() {
                   col.headerAlign = "right";
                   col.align = "right";
                 });
-                // apiRef.current.align("", "right");
               },
             },
             left: {
@@ -447,7 +462,6 @@ function App() {
                   col.headerAlign = "left";
                   col.align = "left";
                 });
-                // apiRef.current.align("", "right");
               },
             },
           }}
@@ -540,8 +554,8 @@ function App() {
           setOpenSnackbar(true);
           console.log("DELETE err: ", err);
         });
-    };
-  const [showMeta, setShowMeta] = useState(false),
+    },
+    [showMeta, setShowMeta] = useState(false),
     [allowSave, setAllowSave] = useState(true),
     addRecord = (e) => {
       const id = uuidv4();
@@ -553,11 +567,9 @@ function App() {
         });
         newRow.id = id;
       }
-      // console.log("rows", rows, "newRow", newRow);
       setRows([...rows, newRow]);
     },
     deleteRecord = (e) => {
-      // setRows((oldRows) => [...oldRows, { id: id }]);
       const selected = apiRef.current.getSelectedRows();
       for (const key of selected.keys()) {
         setRows((oldRows) => oldRows.filter((row) => row.id !== key));
@@ -573,8 +585,8 @@ function App() {
       const tempRows = [...rows, ...extraRows];
       console.log("tempRows", tempRows);
       setRows(tempRows);
-    };
-  const sortDataAndSetRows = (ddd, mmm, iii) => {
+    },
+    sortDataAndSetRows = (ddd, mmm, iii) => {
       // find any sort key that may be in the metadata
       const sortBy = Object.keys(mmm)
         .map((k) => {
@@ -627,7 +639,6 @@ function App() {
         id: uuidv4(),
       }));
       console.log("loading backup -> ", b, "tempRows", tempRows);
-      // setRows(tempRows);
       setRows(tempRows);
     },
     backup = (r) => {
@@ -672,233 +683,341 @@ function App() {
         .then((res) => {
           const lastModified = res.headers.get("Last-Modified");
           setLastModified(lastModified);
-          return res.json();
+          // if the file was a CSV file, then we can use papaparse to parse the CSV into JSON
+          if (d.endsWith(".csv")) {
+            return res.text();
+          } else return res.json();
         })
         .then((data) => {
-          setOriginalData(data);
-          const tempAvailableKeys = Object.keys(data),
-            isObject =
-              typeof data === "object" && !Array.isArray(data) && data !== null;
-          setAvailableKeys(tempAvailableKeys);
-          // let k = null;
-          if (tempAvailableKeys.length > 0 && !key) {
-            if (isObject) {
-              // check each key to see if it is an array, and then use that
-              for (let i = 0; i < tempAvailableKeys.length; i++) {
-                const tempK = tempAvailableKeys[i];
-                if (data[tempK].constructor === Array) {
-                  k = tempAvailableKeys[i];
-                }
-              }
-            }
-            setKey(k);
-          }
-          let data2use = data;
-          if (k) {
-            data2use = data[k];
-          }
-
-          const ia = Array.isArray(data2use);
-          console.log(
-            "ia",
-            ia,
-            "data2use",
-            data2use,
-            "key",
-            k,
-            "metaData",
-            metaData,
-            "info",
-            info
-          );
-          setIsArray(ia);
-          if (!ia || data2use.length === 0) return;
-          setGlobalMeta(metaData);
-
-          // TODO: check if the data is an array of objects, if not, make it so
-          sortDataAndSetRows(data2use, metaData, info);
-          const tempRows = data2use.map((d, i) => ({ ...d, id: i })); // add an id field to each row
-          // backup(tempRows);
-          setRows(tempRows);
-          const metaKeys = Object.keys(metaData),
-            dataKeys = Object.keys(data2use[0]),
-            combinedKeys = metaKeys
-              .concat(dataKeys.filter((item) => metaKeys.indexOf(item) < 0))
-              .filter((k) => k.startsWith("#") === false);
-          let pins = [];
-          // handle the special metadata with keys that start with #
-          // #viewonly - if this key is present, then the user cannot save the data back to the server
-          metaKeys.forEach((k) => {
-            if (k === "#viewonly") setAllowSave(false);
-          });
-          dataKeys.forEach((k) => {
-            // console.log("dataKeys", dataKeys, "metaData[k]", metaData[k]);
-            const tempHiddenColumns = hiddenColumns;
-            if (metaData[k]?.hide) {
-              console.log("adding to hiddenColumns - ", k);
-              tempHiddenColumns.push(k);
-            }
-            console.log(tempHiddenColumns);
-            setHiddenColumns(tempHiddenColumns);
-            const tempHiddenColumnsObject = {};
-            tempHiddenColumns.forEach(
-              (c) => (tempHiddenColumnsObject[c] = false)
-            );
-            console.log(
-              "tempHiddenColumns",
-              tempHiddenColumns,
-              "tempHiddenColumnsObject",
-              tempHiddenColumnsObject
-            );
-            setHiddenColumnsObject(tempHiddenColumnsObject);
-          });
-          setCols(
-            combinedKeys.map((k) => {
-              let headerName = k,
-                type = "string",
-                valueOptions = null,
-                width = null,
-                link = false,
-                log = false,
-                logverKeyToUse = null,
-                file = false,
-                fileverKeyToUse = null,
-                short = null,
-                heatmap = null,
-                multiselect = null,
-                filter = null,
-                datefilter = null,
-                pin = null,
-                tooltip = null,
-                description = null,
-                multiline = false;
-              if (metaData[k]) {
-                headerName = metaData[k].label;
-                type = metaData[k].type;
-                valueOptions = metaData[k].valueOptions;
-                width = metaData[k].width;
-                link = metaData[k].link;
-                log = metaData[k]?.log;
-                logverKeyToUse = metaData[k]?.logver;
-                file = metaData[k]?.file;
-                fileverKeyToUse = metaData[k]?.filever;
-                short = metaData[k]?.short;
-                heatmap = metaData[k]?.heatmap;
-                multiselect = metaData[k]?.multiselect;
-                filter = metaData[k]?.filter;
-                datefilter = metaData[k]?.datefilter;
-                pin = metaData[k]?.pin;
-                tooltip = metaData[k]?.tooltip;
-                description = metaData[k]?.description;
-                multiline = metaData[k]?.multiline;
-              }
-
-              let valueGetter = null;
-              if (type === "date" || type === "dateTime") {
-                valueGetter = (row) => {
-                  return row && new Date(row.value);
-                };
-              }
-              let renderCell = null;
-              if (tooltip) {
-                renderCell = (params) => {
-                  const { row } = params,
-                    tt = row[tooltip];
-                  return <Tooltip title={tt}>{params.value}</Tooltip>;
-                };
-              }
-              if (log || file || link) {
-                renderCell = (params) => {
-                  const { row } = params,
-                    logver = row[logverKeyToUse]
-                      ? "?version=" + row[logverKeyToUse]
-                      : "",
-                    filever = row[fileverKeyToUse]
-                      ? "?version=" + row[fileverKeyToUse]
-                      : "",
-                    url =
-                      params.value > " " && log
-                        ? logViewerPrefix + params.value + logver
-                        : params.value > " " && file
-                        ? fileViewerPrefix + params.value + filever
-                        : params.value;
-                  if (url.startsWith("http")) {
-                    return (
-                      <Link href={url} target="_blank" rel="noreferrer">
-                        {short || params.value}
-                      </Link>
-                    );
-                  } else return "n/a";
-                };
-              } else if (heatmap) {
-                renderCell = (params) => {
-                  const color = heatmap[params.value] || "white";
-                  return (
-                    <Box sx={{ backgroundColor: color, flexGrow: 1 }}>
-                      {params.value}
-                    </Box>
-                  );
-                };
-              }
-              // if (multiselect) {
-              //   renderCell = (params) => {
-              //     const color = heatmap[params.value] || "white";
-              //     return (
-              //       <Box sx={{ backgroundColor: color, flexGrow: 1 }}>
-              //         {params.value}
-              //       </Box>
-              //     );
-              //   };
-              // }
-              if (filter) {
-                const tempUniqueValues = Array.from(
-                  new Set(data2use.map((row) => row[k]))
-                ).filter((v) => v !== undefined);
-                setUniqueValues({
-                  key: k,
-                  type: type,
-                  values: tempUniqueValues,
-                });
-              }
-              if (datefilter) {
-                tempDatefilters[k] = datefilter;
-              }
-              if (pin) {
-                pins = [...pins, k];
-                const pinsUnique = [...new Set(pins)];
-                setPinnedColumns({ left: pinsUnique });
-              }
-              let columnDefinition = {
-                field: k,
-                headerName: headerName,
-                editable: true,
-                type: type,
-                valueGetter: valueGetter,
-                valueOptions: valueOptions,
-                renderCell: renderCell,
-                width: width,
-                description: description,
-              };
-              if (multiline) {
-                columnDefinition = {
-                  field: k,
-                  headerName: headerName,
-                  editable: true,
-                  type: type,
-                  valueGetter: valueGetter,
-                  valueOptions: valueOptions,
-                  renderCell: renderCell,
-                  width: width,
-                  description: description,
-                  ...multilineColumn,
-                };
-              }
-              return columnDefinition;
-            })
-          );
+          if (d.endsWith(".csv")) {
+            const parsed = readString(data, { header: true });
+            console.log("parsed", parsed);
+            processData(parsed.data, k, metaData, info, tempDatefilters);
+          } else processData(data, k, metaData, info, tempDatefilters);
         });
       console.log("tempDatefilters", tempDatefilters);
       setDatefilters(tempDatefilters);
+    },
+    processData = (data, k, metaData, info, tempDatefilters) => {
+      setOriginalData(data);
+      const tempAvailableKeys = Object.keys(data),
+        isObject =
+          typeof data === "object" && !Array.isArray(data) && data !== null;
+      setAvailableKeys(tempAvailableKeys);
+      if (tempAvailableKeys.length > 0 && !key) {
+        if (isObject) {
+          // check each key to see if it is an array, and then use that
+          for (let i = 0; i < tempAvailableKeys.length; i++) {
+            const tempK = tempAvailableKeys[i];
+            if (data[tempK].constructor === Array) {
+              k = tempAvailableKeys[i];
+            }
+          }
+        }
+        setKey(k);
+      }
+      let data2use = data;
+      if (k) {
+        data2use = data[k];
+      }
+
+      const ia = Array.isArray(data2use);
+      console.log(
+        "ia",
+        ia,
+        "data2use",
+        data2use,
+        "key",
+        k,
+        "metaData",
+        metaData,
+        "info",
+        info
+      );
+      setIsArray(ia);
+      if (!ia || data2use.length === 0) return;
+      setGlobalMeta(metaData);
+
+      // TODO: check if the data is an array of objects, if not, make it so
+      sortDataAndSetRows(data2use, metaData, info);
+      const tempRows = data2use.map((d, i) => ({ ...d, id: i })); // add an id field to each row
+      // backup(tempRows);
+      setRows(tempRows);
+      const metaKeys = Object.keys(metaData),
+        dataKeys = Object.keys(data2use[0]),
+        combinedKeys = metaKeys
+          .concat(dataKeys.filter((item) => metaKeys.indexOf(item) < 0))
+          .filter((k) => k.startsWith("#") === false);
+      let pins = [];
+      // handle the special metadata with keys that start with #
+      // #viewonly - if this key is present, then the user cannot save the data back to the server
+      metaKeys.forEach((k) => {
+        if (k === "#viewonly") setAllowSave(false);
+      });
+      dataKeys.forEach((k) => {
+        const tempHiddenColumns = hiddenColumns;
+        if (metaData[k]?.hide) {
+          tempHiddenColumns.push(k);
+        }
+        setHiddenColumns(tempHiddenColumns);
+        const tempHiddenColumnsObject = {};
+        tempHiddenColumns.forEach((c) => (tempHiddenColumnsObject[c] = false));
+        setHiddenColumnsObject(tempHiddenColumnsObject);
+      });
+      setCols(
+        combinedKeys.map((k) => {
+          let headerName = k,
+            type = "string",
+            valueOptions = null,
+            width = null,
+            link = false,
+            linkvar = null,
+            log = false,
+            logverKeyToUse = null,
+            file = false,
+            fileverKeyToUse = null,
+            short = null,
+            heatmap = null,
+            heatmapRange = null,
+            heatmapCondition = null,
+            filter = null,
+            datefilter = null,
+            pin = null,
+            tooltip = null,
+            description = null,
+            multiline = false;
+          if (metaData[k]) {
+            headerName = metaData[k].label;
+            type = metaData[k].type;
+            valueOptions = metaData[k].valueOptions;
+            width = metaData[k].width;
+            link = metaData[k].link;
+            linkvar = metaData[k].linkvar;
+            log = metaData[k]?.log;
+            logverKeyToUse = metaData[k]?.logver;
+            file = metaData[k]?.file;
+            fileverKeyToUse = metaData[k]?.filever;
+            short = metaData[k]?.short;
+            heatmap = metaData[k]?.heatmap;
+            heatmapRange = metaData[k]?.heatmapRange;
+            heatmapCondition = metaData[k]?.heatmapCondition;
+            filter = metaData[k]?.filter;
+            datefilter = metaData[k]?.datefilter;
+            pin = metaData[k]?.pin;
+            tooltip = metaData[k]?.tooltip;
+            description = metaData[k]?.description;
+            multiline = metaData[k]?.multiline;
+          }
+
+          let valueGetter = null;
+          if (type === "date" || type === "dateTime") {
+            valueGetter = (row) => {
+              return row && new Date(row.value);
+            };
+          }
+          let renderCell = null;
+          if (tooltip) {
+            renderCell = (params) => {
+              const { row } = params,
+                tt = row[tooltip];
+              return <Tooltip title={tt}>{params.value}</Tooltip>;
+            };
+          }
+
+          if (log || file || link) {
+            renderCell = (params) => {
+              const { row } = params;
+              let tt = "";
+              if ("tooltip" in row) tt = row[tooltip];
+              else tt = params.value;
+              const logver = row[logverKeyToUse]
+                  ? "?version=" + row[logverKeyToUse]
+                  : "",
+                filever = row[fileverKeyToUse]
+                  ? "?version=" + row[fileverKeyToUse]
+                  : "",
+                url =
+                  params.value > " " && log
+                    ? logViewerPrefix + params.value + logver
+                    : params.value > " " && file
+                    ? fileViewerPrefix + params.value + filever
+                    : params.value > " " && link && linkvar
+                    ? params.value.replace("{{linkvar}}", row[linkvar])
+                    : params.value > " " && link
+                    ? params.value
+                    : null;
+              console.log(
+                "url",
+                url,
+                "params.value",
+                params.value,
+                "link",
+                link,
+                "linkvar",
+                linkvar
+              );
+              if (typeof url === "string" && url.startsWith("http")) {
+                return (
+                  <Tooltip title={tt}>
+                    <Link href={url} target="_blank" rel="noreferrer">
+                      {short || params.value}
+                    </Link>
+                  </Tooltip>
+                );
+              } else return "n/a";
+            };
+          } else if (heatmap) {
+            renderCell = (params) => {
+              const { row } = params;
+              let applyHeatmap = true;
+              if (
+                heatmapCondition &&
+                Object.keys(heatmapCondition).length > 0
+              ) {
+                const heatKeys = Object.keys(heatmapCondition);
+                for (const key of heatKeys) {
+                  console.log("heatmapCondition[key]", heatmapCondition[key]);
+                  const things = Object.keys(heatmapCondition[key]);
+                  console.log("things", things);
+                  for (const operator of things) {
+                    const thingValue = heatmapCondition[key][operator];
+                    console.log(
+                      "key",
+                      key,
+                      "operator",
+                      operator,
+                      "thingValue",
+                      thingValue,
+                      "row[key]",
+                      row[key]
+                    );
+                    if (operator === "NE" && row[key] === thingValue)
+                      applyHeatmap = false;
+                    if (operator === "EQ" && row[key] !== thingValue)
+                      applyHeatmap = false;
+                  }
+                }
+              }
+              const color = applyHeatmap
+                ? heatmap[params.value] || "white"
+                : null;
+              return (
+                <Box sx={{ backgroundColor: color, flexGrow: 1 }}>
+                  {params.value}
+                </Box>
+              );
+            };
+          } else if (heatmapRange) {
+            renderCell = (params) => {
+              const { row } = params;
+              let applyHeatmap = true;
+              if (
+                heatmapCondition &&
+                Object.keys(heatmapCondition).length > 0
+              ) {
+                console.log("===>");
+                const heatKeys = Object.keys(heatmapCondition);
+                for (const key of heatKeys) {
+                  console.log("heatmapCondition[key]", heatmapCondition[key]);
+                  const things = Object.keys(heatmapCondition[key]);
+                  console.log("things", things);
+                  for (const operator of things) {
+                    const thingValue = heatmapCondition[key][operator];
+                    console.log(
+                      "key",
+                      key,
+                      "operator",
+                      operator,
+                      "thingValue",
+                      thingValue,
+                      "row[key]",
+                      row[key]
+                    );
+                    if (operator === "NE" && row[key] === thingValue)
+                      applyHeatmap = false;
+                    if (operator === "EQ" && row[key] !== thingValue)
+                      applyHeatmap = false;
+                  }
+                }
+              }
+              let colorR = null;
+              for (const element of heatmapRange) {
+                const from = element?.from,
+                  to = element?.to,
+                  rangeColor = element?.color;
+                if (from && to) {
+                  if (params.value >= from && params.value <= to)
+                    colorR = rangeColor;
+                } else if (from && !to) {
+                  if (params.value >= from) colorR = rangeColor;
+                } else if (!from && to) {
+                  if (params.value <= to) colorR = rangeColor;
+                }
+              }
+              const color = applyHeatmap ? colorR || "white" : null;
+              return (
+                <Box sx={{ backgroundColor: color, flexGrow: 1 }}>
+                  {params.value}
+                </Box>
+              );
+            };
+          }
+          if (filter) {
+            const tempUniqueValues = Array.from(
+              new Set(data2use.map((row) => row[k]))
+            ).filter((v) => v !== undefined);
+            if (typeof tempUniqueValues[0] === "string")
+              tempUniqueValues.sort((a, b) => a.localeCompare(b));
+            if (tempGlobalFilters.filter((r) => r.key === k).length === 0)
+              tempGlobalFilters.push({
+                key: k,
+                type: type,
+                values: tempUniqueValues,
+              });
+            console.log(
+              "tempUniqueValues",
+              tempUniqueValues,
+              "tempGlobalFilters",
+              tempGlobalFilters
+            );
+            setGlobalFilters(tempGlobalFilters);
+          }
+          if (datefilter) {
+            tempDatefilters[k] = datefilter;
+          }
+          if (pin) {
+            pins = [...pins, k];
+            const pinsUnique = [...new Set(pins)];
+            setPinnedColumns({ left: pinsUnique });
+          }
+          let columnDefinition = {
+            field: k,
+            headerName: headerName,
+            editable: true,
+            type: type,
+            valueGetter: valueGetter,
+            valueOptions: valueOptions,
+            renderCell: renderCell,
+            width: width,
+            description: description,
+          };
+          if (multiline) {
+            columnDefinition = {
+              field: k,
+              headerName: headerName,
+              editable: true,
+              type: type,
+              valueGetter: valueGetter,
+              valueOptions: valueOptions,
+              renderCell: renderCell,
+              width: width,
+              description: description,
+              ...multilineColumn,
+            };
+          }
+          return columnDefinition;
+        })
+      );
     },
     handleLocal = () => {
       console.log(
@@ -957,19 +1076,11 @@ function App() {
         // hide
         const tempHiddenColumns = hiddenColumns;
         if (localMeta[k]?.hide) {
-          console.log("adding to hiddenColumns - ", k);
           tempHiddenColumns.push(k);
         }
-        console.log("tempHiddenColumns", tempHiddenColumns);
         setHiddenColumns(tempHiddenColumns);
         const tempHiddenColumnsObject = {};
         tempHiddenColumns.forEach((c) => (tempHiddenColumnsObject[c] = false));
-        console.log(
-          "tempHiddenColumns",
-          tempHiddenColumns,
-          "tempHiddenColumnsObject",
-          tempHiddenColumnsObject
-        );
         setHiddenColumnsObject(tempHiddenColumnsObject);
       });
       setCols(
@@ -983,8 +1094,11 @@ function App() {
             file = false,
             fileverKeyToUse = null,
             link = false,
+            linkvar = null,
             short = null,
             heatmap = null,
+            heatmapRange = null,
+            heatmapCondition = null,
             filter = null,
             datefilter = null,
             pin = null,
@@ -1001,8 +1115,11 @@ function App() {
             file = localMeta[k].file;
             fileverKeyToUse = localMeta[k].filever;
             link = localMeta[k].link;
+            linkvar = localMeta[k].linkvar;
             short = localMeta[k].short;
             heatmap = localMeta[k].heatmap;
+            heatmapRange = localMeta[k].heatmapRange;
+            heatmapCondition = localMeta[k].heatmapCondition;
             filter = localMeta[k].filter;
             datefilter = localMeta[k].datefilter;
             pin = localMeta[k].pin;
@@ -1038,6 +1155,10 @@ function App() {
                     ? logViewerPrefix + params.value + logver
                     : params.value > " " && file
                     ? fileViewerPrefix + params.value + filever
+                    : params.value > " " && link && linkvar
+                    ? link.replace("{{linkvar}}", row[linkvar])
+                    : params.value > " " && link
+                    ? link
                     : params.value;
               if (url.startsWith("http")) {
                 return (
@@ -1049,8 +1170,69 @@ function App() {
             };
           } else if (heatmap) {
             renderCell = (params) => {
-              console.log("params", params);
-              const color = heatmap[params.value] || "white";
+              const { row } = params;
+              let applyHeatmap = true;
+              if (
+                heatmapCondition &&
+                Object.keys(heatmapCondition).length > 0
+              ) {
+                const heatKeys = Object.keys(heatmapCondition);
+                for (const key of heatKeys) {
+                  const things = Object.keys(heatmapCondition[key]);
+                  for (const operator of things) {
+                    const thingValue = heatmapCondition[key][operator];
+                    if (operator === "NE" && row[key] === thingValue)
+                      applyHeatmap = false;
+                    if (operator === "EQ" && row[key] !== thingValue)
+                      applyHeatmap = false;
+                  }
+                }
+              }
+              const color = applyHeatmap
+                ? heatmap[params.value] || "white"
+                : null;
+              return (
+                <Box sx={{ backgroundColor: color, flexGrow: 1 }}>
+                  {params.value}
+                </Box>
+              );
+            };
+          }
+          if (heatmapRange) {
+            renderCell = (params) => {
+              const { row } = params;
+              let applyHeatmap = true;
+              if (
+                heatmapCondition &&
+                Object.keys(heatmapCondition).length > 0
+              ) {
+                const heatKeys = Object.keys(heatmapCondition);
+                for (const key of heatKeys) {
+                  const things = Object.keys(heatmapCondition[key]);
+                  for (const operator of things) {
+                    const thingValue = heatmapCondition[key][operator];
+                    if (operator === "NE" && row[key] === thingValue)
+                      applyHeatmap = false;
+                    if (operator === "EQ" && row[key] !== thingValue)
+                      applyHeatmap = false;
+                  }
+                }
+              }
+              let colorR = null;
+              for (const element of heatmapRange) {
+                const from = element?.from,
+                  to = element?.to,
+                  rangeColor = element?.color;
+                if (from && to) {
+                  if (params.value >= from && params.value <= to)
+                    colorR = rangeColor;
+                } else if (from && !to) {
+                  if (params.value >= from) colorR = rangeColor;
+                } else if (!from && to) {
+                  if (params.value <= to) colorR = rangeColor;
+                }
+              }
+              const color = applyHeatmap ? colorR || "white" : null;
               return (
                 <Box sx={{ backgroundColor: color, flexGrow: 1 }}>
                   {params.value}
@@ -1062,7 +1244,21 @@ function App() {
             const tempUniqueValues = Array.from(
               new Set(useData.map((row) => row[k]))
             ).filter((v) => v !== undefined);
-            setUniqueValues({ key: k, type: type, values: tempUniqueValues });
+            if (typeof tempUniqueValues[0] === "string")
+              tempUniqueValues.sort((a, b) => a.localeCompare(b));
+            if (tempGlobalFilters.filter((r) => r.key === k).length === 0)
+              tempGlobalFilters.push({
+                key: k,
+                type: type,
+                values: tempUniqueValues,
+              });
+            console.log(
+              "tempUniqueValues",
+              tempUniqueValues,
+              "tempGlobalFilters",
+              tempGlobalFilters
+            );
+            setGlobalFilters(tempGlobalFilters);
           }
           if (datefilter) {
             tempDatefilters[k] = datefilter;
@@ -1203,14 +1399,6 @@ function App() {
     if (!isArray) setChecked(true);
     else setChecked(false);
   }, [isArray]);
-
-  // useEffect(() => {
-  //   if (hiddenColumns.length === 0) return;
-  //   const temp = {};
-  //   hiddenColumns.forEach((c) => (temp[c] = false));
-  //   console.log("hiddenColumns", hiddenColumns, "temp", temp);
-  //   setHiddenColumnsObject(temp);
-  // }, [hiddenColumns]);
 
   return (
     <div className="App">
@@ -1447,7 +1635,7 @@ function App() {
               density="compact"
               // getRowId={(row) => row.__id__}
               // autoHeight
-              pageSizeOptions={[25, 100, 1000]}
+              pageSizeOptions={[25, 100, 1000, 10000]}
               pagination
               editMode="row"
               slots={{ columnMenu: CustomColumnMenu, toolbar: CustomToolbar }}
@@ -1458,7 +1646,7 @@ function App() {
                 },
               }}
               sx={{
-                width: window.innerWidth,
+                // width: window.innerWidth,
                 height: window.innerHeight - 50,
                 fontWeight: `fontSize=5`,
                 fontSize: { fontSize },
@@ -1540,7 +1728,6 @@ function App() {
                 variant="outlined"
                 onClick={() => {
                   window.open(t.url, "_blank").focus();
-                  // handleCloseMenu();
                 }}
                 // sx={{ mb: 1 }}
               >
@@ -1581,7 +1768,20 @@ function App() {
         onClose={() => setOpenInfo(false)}
         open={openInfo}
       >
-        <DialogTitle>Info about this screen</DialogTitle>
+        <DialogTitle>
+          Info about this screen{" "}
+          <Link
+            variant="inherit"
+            sx={{ display: "flex", justifyContent: "right" }}
+            href={
+              "https://argenxbvba.sharepoint.com/:w:/r/sites/Biostatistics/_layouts/15/Doc.aspx?sourcedoc=%7BB2358A9E-83A1-47DE-91FB-FD5C3C2CA62D%7D&file=View%20(web%20app).docx&action=default&mobileredirect=true"
+            }
+            target="_blank"
+            rel="noopener"
+          >
+            Open User Guide
+          </Link>
+        </DialogTitle>
         <DialogContent>
           {infoHtml && <div dangerouslySetInnerHTML={{ __html: infoHtml }} />}
           <h1>General Info</h1>
@@ -1692,17 +1892,6 @@ function App() {
               </Link>
             </li>
           </ul>
-          <hr />
-          <Link
-            variant="h3"
-            href={
-              "https://argenxbvba.sharepoint.com/:w:/r/sites/Biostatistics/_layouts/15/Doc.aspx?sourcedoc=%7BB2358A9E-83A1-47DE-91FB-FD5C3C2CA62D%7D&file=View%20(web%20app).docx&action=default&mobileredirect=true"
-            }
-            target="_blank"
-            rel="noopener"
-          >
-            User Guide
-          </Link>
         </DialogContent>
       </Dialog>
     </div>
