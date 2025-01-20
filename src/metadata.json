@@ -1,144 +1,93 @@
 {
-  "#viewonly": true,
-  "submittedDateSAS": {
-    "type": "datetime",
-    "label": "Submitted",
-    "width": 140
-  },
-  "completedDateSAS": {
-    "type": "datetime",
-    "label": "Completed",
-    "width": 140,
-    "sort": 2,
-    "description": "This column is for the completed date"
-  },
-  "job_name": {
+  "Name": {
     "type": "string",
-    "label": "Job",
-    "width": 220,
-    "tooltip": "summaryStatus"
+    "label": "Name",
+    "width": 160,
+    "pin": true
   },
-  "QC_changed": {
-    "type": "datetime",
-    "label": "QC changed",
-    "width": 140,
-    "timeStamp": true,
-    "variableChange": "job_name"
-  },
-  "study": {
+  "userid": {
     "type": "string",
-    "label": "Study",
-    "width": 120,
-    "sort": 1,
-    "tooltip": "detailStatus",
-    "description": "This column is for the study",
+    "label": "Userid",
+    "width": 100,
+    "pin": true
+  },
+  "profile": {
+    "type": "string",
+    "label": "Profile",
+    "width": 80,
     "pin": true,
-    "link": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/sdtm-last/index.html?study={{linkvar}}",
-    "linkvar": "study"
-  },
-  "summaryStatus": {
-    "type": "string",
-    "label": "Summary",
-    "width": 90,
     "filter": true
   },
-  "detailStatus": {
-    "type": "string",
-    "label": "Detail",
-    "width": 90,
-    "heatmap": {
-      "ERRORS": "#ffd6cc",
-      "WARNINGS": "#ffff4d",
-      "SUCCESSFUL": "#e6ffe6",
-      "SKIPPED": "#f2f2f2",
-      "CHECKIN ERROR": "#ff9999"
-    },
-    "heatmapCondition": { "job_name": { "NE": "pp" } },
-    "filter": true
-  },
-  "duration": { "type": "time", "label": "Duration", "width": 70 },
-  "log_path": {
-    "type": "string",
-    "label": "Log",
-    "log": true,
-    "logver": "log_version",
-    "short": "open",
-    "width": 30
-  },
-  "mnf_path": {
-    "type": "string",
-    "label": "Mnf",
-    "file": true,
-    "filever": "mnf_version",
-    "short": "open",
-    "width": 30
-  },
-  "path": {
-    "type": "string",
-    "label": "Job",
-    "file": true,
-    "short": "open",
-    "width": 30
-  },
-  "pgm_path1": {
-    "type": "string",
-    "label": "Pgm",
-    "file": true,
-    "filever": "pgm_version1",
-    "short": "open",
-    "width": 30
-  },
-  "lst_path": {
-    "type": "string",
-    "label": "Lst",
-    "file": true,
-    "short": "open",
-    "width": 30
-  },
-  "parent_path": {
-    "type": "string",
-    "label": "Parent",
-    "file": true,
-    "short": "open",
-    "width": 30
-  },
-  "product": {
-    "type": "string",
-    "label": "Product",
-    "width": 70
-  },
-  "indic": {
-    "type": "string",
-    "label": "Indication",
-    "width": 130
-  },
-  "mnf_version": { "type": "string", "label": "MNF", "width": 80 },
-  "pgm_version1": { "type": "string", "label": "PGM", "width": 80 },
-  "log_version": { "type": "string", "label": "LOG", "width": 80 },
-  "src": { "type": "string", "label": "Source", "width": 50 },
-  "duration_minutes": {
+  "fte": {
     "type": "number",
-    "label": "Mins",
-    "width": 50,
-    "heatmapRange": [
-      { "from": 5, "to": 10, "color": "#ff9999" },
-      { "from": 10, "to": 50, "color": "#ffff4d" },
-      { "from": 50, "color": "#e6ffe6" }
+    "label": "FTE",
+    "width": 60
+  },
+  "lead": {
+    "type": "string",
+    "label": "Lead Programmer",
+    "width": 250
+  },
+  "line": {
+    "type": "singleSelect",
+    "label": "Line Manager",
+    "width": 220,
+    "valueOptions": [
+      "Angelo Garzouzie (agarzouzie)",
+      "Bjorn Daems (bdaems)",
+      "Dirk Van Krunckelsven (dvankrunckelsven)",
+      "Martijn Busselen (mbusselen)",
+      "???"
     ]
   },
-  "duration_hours": { "type": "number", "label": "Hours", "width": 50 },
-  "order": {
-    "type": "number",
-    "label": "Order",
-    "width": 50
+  "intermediary": {
+    "type": "singleSelect",
+    "label": "Intermediary",
+    "width": 150,
+    "filter": true,
+    "valueOptions": [
+      "LACO",
+      "OpenAnalytics",
+      "Meet",
+      "EnovaLife (BDLS)",
+      "INCA:PPD",
+      "INCA:ICON",
+      "Virtue Biologics Ltd",
+      "DIRECT",
+      "INTERNAL"
+    ]
   },
-  "helper": { "type": "string", "label": "Helper", "width": 250 },
-  "job_type": { "type": "string", "label": "Type" },
-  "date_sas": {
+  "contract_end": {
     "type": "date",
-    "label": "Date",
-    "width": 90,
-    "datefilter": { "lt": 30 }
+    "label": "Contract end",
+    "width": 100,
+    "heatmap_age": [
+      { "to": 30, "color": "#ffd6cc" },
+      { "from": 30, "to": 60, "color": "#ffff4d" }
+    ],
+    "datefilter": { "lt": 60 }
   },
-  "dosubl_rc": { "type": "string", "label": "RC" }
+  "renewal_discussed": {
+    "type": "singleSelect",
+    "label": "Renewal discussed",
+    "width": 150,
+    "valueOptions": ["POS", "NEG", "???"],
+    "heatmap": {
+      "NEG": "#ffd6cc",
+      "???": "#ffff4d",
+      "POS": "#e6ffe6"
+    }
+  },
+  "agreement_description": {
+    "type": "string",
+    "label": "Agreement description",
+    "width": 200,
+    "multiline": true
+  },
+  "comments": {
+    "type": "string",
+    "label": "Comments",
+    "width": 200,
+    "multiline": true
+  }
 }

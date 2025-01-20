@@ -27,6 +27,7 @@ import {
   Switch,
   Popper,
   Paper,
+  // TextField,
   Chip,
 } from "@mui/material";
 import {
@@ -83,13 +84,13 @@ function App() {
     fileViewerPrefix =
       "https://" +
       host +
-      "/lsaf/filedownload/sdd:/general/biostat/tools/fileviewer/index.html?file=",
+      "/lsaf/filedownload/sdd:/general/biostat/apps/fileviewer/index.html?file=",
     // logViewerPrefix =
-    //   "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/logviewer/index.html?log=",
+    //   "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/apps/logviewer/index.html?log=",
     logViewerPrefix =
       "https://" +
       host +
-      "/lsaf/filedownload/sdd:/general/biostat/tools/logviewer/index.html?log=",
+      "/lsaf/filedownload/sdd:/general/biostat/apps/logviewer/index.html?log=",
     params = new URLSearchParams(document.location.search),
     handleClickMenu = (event) => {
       setAnchorEl(event.currentTarget);
@@ -106,6 +107,7 @@ function App() {
     }, []),
     [hiddenColumns, setHiddenColumns] = useState([]),
     [hiddenColumnsObject, setHiddenColumnsObject] = useState({}),
+    [timestampsToDo, setTimestampsToDo] = useState([]),
     // [uniqueValues, setUniqueValues] = useState([]),
     [datefilters, setDatefilters] = useState(null),
     [availableKeys, setAvailableKeys] = useState([]),
@@ -293,10 +295,9 @@ function App() {
             Array.from(Object.keys(datefilters)).map((df, id) => {
               const u = datefilters[df],
                 k = Object.keys(u)[0],
-                v = u[k],
-                op = k === "lt" ? "is before" : k === "gt" ? "is after" : k;
-
-              console.log("df", df, "u", u, "k", k, "v", v, "op", op);
+                v = u[k];
+              // op = k === "lt" ? "is before" : k === "gt" ? "is after" : k;
+              // console.log("df", df, "u", u, "k", k, "v", v, "op", op);
               return (
                 <Button
                   color="warning"
@@ -499,8 +500,20 @@ function App() {
       return newRow;
     },
     updateJsonFile = (file, content) => {
-      console.log("updateJsonFile - file:", file, "content:", content);
+      console.log(
+        "updateJsonFile - file:",
+        file,
+        "content:",
+        content,
+        "timestampsToDo",
+        timestampsToDo
+      );
       if (!file || !content) return;
+
+      // TODO: add timestamps for things we are monitoring that have changed
+      // compare original content to new content
+      // if different in a varChanged from timestampsToDo then add a timestamp to the new content in the varTimestamp field
+
       // drop id from each row in content
       const contentWithoutId = content.map((c) => {
         delete c.id;
@@ -779,6 +792,7 @@ function App() {
             short = null,
             heatmap = null,
             heatmapRange = null,
+            heatmapAge = null,
             heatmapCondition = null,
             filter = null,
             datefilter = null,
@@ -800,6 +814,7 @@ function App() {
             short = metaData[k]?.short;
             heatmap = metaData[k]?.heatmap;
             heatmapRange = metaData[k]?.heatmapRange;
+            heatmapAge = metaData[k]["heatmap_age"];
             heatmapCondition = metaData[k]?.heatmapCondition;
             filter = metaData[k]?.filter;
             datefilter = metaData[k]?.datefilter;
@@ -961,6 +976,70 @@ function App() {
                 </Box>
               );
             };
+          } else if (heatmapAge) {
+            renderCell = (params) => {
+              const { row } = params;
+              let applyHeatmap = true;
+              if (
+                heatmapCondition &&
+                Object.keys(heatmapCondition).length > 0
+              ) {
+                console.log("===>");
+                const heatKeys = Object.keys(heatmapCondition);
+                for (const key of heatKeys) {
+                  console.log("heatmapCondition[key]", heatmapCondition[key]);
+                  const things = Object.keys(heatmapCondition[key]);
+                  console.log("things", things);
+                  for (const operator of things) {
+                    const thingValue = heatmapCondition[key][operator];
+                    console.log(
+                      "key",
+                      key,
+                      "operator",
+                      operator,
+                      "thingValue",
+                      thingValue,
+                      "row[key]",
+                      row[key]
+                    );
+                    if (operator === "NE" && row[key] === thingValue)
+                      applyHeatmap = false;
+                    if (operator === "EQ" && row[key] !== thingValue)
+                      applyHeatmap = false;
+                  }
+                }
+              }
+              console.log("params", params);
+              let colorR = null,
+                age = null,
+                dateText = params.value
+                  ? params.value.toLocaleDateString()
+                  : null;
+              if (params.value) {
+                const then = new Date(params.value),
+                  now = new Date(),
+                  diffTime = Math.abs(then - now);
+                age = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              }
+              for (const element of heatmapAge) {
+                const from = element?.from,
+                  to = element?.to,
+                  rangeColor = element?.color;
+                if (from && to) {
+                  if (age >= from && age <= to) colorR = rangeColor;
+                } else if (from && !to) {
+                  if (age >= from) colorR = rangeColor;
+                } else if (!from && to) {
+                  if (age <= to) colorR = rangeColor;
+                }
+              }
+              const color = applyHeatmap ? colorR || "white" : null;
+              return (
+                <Box sx={{ backgroundColor: color, flexGrow: 1 }}>
+                  {dateText}
+                </Box>
+              );
+            };
           }
           if (filter) {
             const tempUniqueValues = Array.from(
@@ -1072,8 +1151,8 @@ function App() {
         if (k === "#viewonly") setAllowSave(false);
       });
       dataKeys.forEach((k) => {
-        console.log("dataKeys", dataKeys, "localMeta[k]", localMeta[k]);
-        // hide
+        // console.log("dataKeys", dataKeys, "localMeta[k]", localMeta[k]);
+        // handle hidden columns
         const tempHiddenColumns = hiddenColumns;
         if (localMeta[k]?.hide) {
           tempHiddenColumns.push(k);
@@ -1082,6 +1161,18 @@ function App() {
         const tempHiddenColumnsObject = {};
         tempHiddenColumns.forEach((c) => (tempHiddenColumnsObject[c] = false));
         setHiddenColumnsObject(tempHiddenColumnsObject);
+      });
+      dataKeys.forEach((k) => {
+        // console.log("dataKeys", dataKeys, "localMeta[k]", localMeta[k]);
+        // handle timestamps
+        const tempTimestampsToDo = [...timestampsToDo],
+          timestampVar = localMeta[k]?.timestamp;
+        if (localMeta[k]?.timestamp) {
+          const temp = { varChanged: k, varTimestamp: timestampVar };
+          tempTimestampsToDo.push(temp);
+          console.log("tempTimestampsToDo", tempTimestampsToDo);
+          setTimestampsToDo(tempTimestampsToDo);
+        }
       });
       setCols(
         combinedKeys.map((k) => {
@@ -1098,6 +1189,7 @@ function App() {
             short = null,
             heatmap = null,
             heatmapRange = null,
+            heatmapAge = null,
             heatmapCondition = null,
             filter = null,
             datefilter = null,
@@ -1119,6 +1211,7 @@ function App() {
             short = localMeta[k].short;
             heatmap = localMeta[k].heatmap;
             heatmapRange = localMeta[k].heatmapRange;
+            heatmapAge = localMeta[k]["heatmap_age"];
             heatmapCondition = localMeta[k].heatmapCondition;
             filter = localMeta[k].filter;
             datefilter = localMeta[k].datefilter;
@@ -1198,6 +1291,39 @@ function App() {
               );
             };
           }
+          // if (timestamp) {
+          //   renderCell = (params) => {
+          //     const { row } = params,
+          //       checkField = row[timestamp];
+          //     return (
+          //       <TextField
+          //         size="small"
+          //         value={params.value}
+          //         onChange={(e) => {
+          //           console.log("change", e);
+          //         }}
+          //         onKeyDown={(e) => {
+          //           console.log(
+          //             "e",
+          //             e,
+          //             e.target.value,
+          //             "row",
+          //             row,
+          //             "timestamp",
+          //             timestamp,
+          //             "checkField",
+          //             checkField
+          //           );
+          //           const d = new Date();
+          //           row[k] = e.target.value;
+          //           row[timestamp] = d.toISOString();
+          //         }}
+          //       >
+          //         {params.value}
+          //       </TextField>
+          //     );
+          //   };
+          // }
           if (heatmapRange) {
             renderCell = (params) => {
               const { row } = params;
@@ -1236,6 +1362,70 @@ function App() {
               return (
                 <Box sx={{ backgroundColor: color, flexGrow: 1 }}>
                   {params.value}
+                </Box>
+              );
+            };
+          } else if (heatmapAge) {
+            renderCell = (params) => {
+              const { row } = params;
+              let applyHeatmap = true;
+              if (
+                heatmapCondition &&
+                Object.keys(heatmapCondition).length > 0
+              ) {
+                console.log("===>");
+                const heatKeys = Object.keys(heatmapCondition);
+                for (const key of heatKeys) {
+                  console.log("heatmapCondition[key]", heatmapCondition[key]);
+                  const things = Object.keys(heatmapCondition[key]);
+                  console.log("things", things);
+                  for (const operator of things) {
+                    const thingValue = heatmapCondition[key][operator];
+                    console.log(
+                      "key",
+                      key,
+                      "operator",
+                      operator,
+                      "thingValue",
+                      thingValue,
+                      "row[key]",
+                      row[key]
+                    );
+                    if (operator === "NE" && row[key] === thingValue)
+                      applyHeatmap = false;
+                    if (operator === "EQ" && row[key] !== thingValue)
+                      applyHeatmap = false;
+                  }
+                }
+              }
+              let colorR = null,
+                age = null,
+                dateText = params.value
+                  ? params.value.toLocaleDateString()
+                  : null;
+              if (params.value) {
+                const then = new Date(params.value),
+                  now = new Date(),
+                  diffTime = Math.abs(then - now);
+                age = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              }
+              console.log(params.value, age, dateText);
+              for (const element of heatmapAge) {
+                const from = element?.from,
+                  to = element?.to,
+                  rangeColor = element?.color;
+                if (from && to) {
+                  if (age >= from && age <= to) colorR = rangeColor;
+                } else if (from && !to) {
+                  if (age >= from) colorR = rangeColor;
+                } else if (!from && to) {
+                  if (age <= to) colorR = rangeColor;
+                }
+              }
+              const color = applyHeatmap ? colorR || "white" : null;
+              return (
+                <Box sx={{ backgroundColor: color, flexGrow: 1 }}>
+                  {dateText}
                 </Box>
               );
             };
@@ -1445,7 +1635,7 @@ function App() {
             <span>
               <Button
                 variant="contained"
-                disabled={!allowSave}
+                // disabled={!allowSave}
                 sx={{ m: 1, ml: 2, fontSize: 10 }}
                 onClick={() => {
                   updateJsonFile(dataUrl, rows);
@@ -1861,7 +2051,7 @@ function App() {
                 href={
                   "https://" +
                   host +
-                  "/lsaf/filedownload/sdd%3A///general/biostat/tools/view/index.html?lsaf=/general/biostat/tools/view/test2.json"
+                  "/lsaf/filedownload/sdd%3A///general/biostat/apps/view/index.html?lsaf=/general/biostat/apps/view/test2.json"
                 }
               >
                 View a JSON file, without metadata and therefore treating all
@@ -1873,7 +2063,7 @@ function App() {
                 href={
                   "https://" +
                   host +
-                  "/lsaf/filedownload/sdd%3A///general/biostat/tools/view/index.html?lsaf=/general/biostat/tools/view/test2.json&meta=/general/biostat/tools/view/test2-metadata.json"
+                  "/lsaf/filedownload/sdd%3A///general/biostat/apps/view/index.html?lsaf=/general/biostat/apps/view/test2.json&meta=/general/biostat/apps/view/test2-metadata.json"
                 }
               >
                 View a JSON file, using metadata to define the columns
@@ -1884,7 +2074,7 @@ function App() {
                 href={
                   "https://" +
                   host +
-                  "/lsaf/filedownload/sdd%3A///general/biostat/tools/view/index.html?lsaf=/general/biostat/tools/view/data%20wtih%20keys.json&key=a"
+                  "/lsaf/filedownload/sdd%3A///general/biostat/apps/view/index.html?lsaf=/general/biostat/apps/view/data%20wtih%20keys.json&key=a"
                 }
               >
                 View a JSON file which has multiple tables with keys, specifying
