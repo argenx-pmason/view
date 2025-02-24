@@ -1,17 +1,32 @@
 {
-  "compound": { "type": " string", "width": 100 },
+  "#button1": {
+    "key": "toggle",
+    "value": "Y",
+    "label": "Y",
+    "tooltip": "Set all Run values to Y"
+  },
+  "#button2": {
+    "key": "toggle",
+    "value": "N",
+    "label": "N",
+    "tooltip": "Set all Run values to N"
+  },
+  "#link1": {
+    "url": "https://xarprod.ondemand.sas.com:8000/lsaf/filedownload/sdd%3A/general/biostat/apps/restapi/index.html?job=/general/biostat/jobs/gadam_ongoing_studies/dev/jobs/sdtm_part3.job&wait=999&every=10",
+    "label": "Go",
+    "tooltip": "Run a job"
+  },
   "indication": { "type": " string", "width": 100 },
   "study": { "type": " string", "width": 100 },
-  "lead_programmer": {
+  "toggle": {
     "type": "singleSelect",
-    "label": "Programmer",
-    "width": 40,
-    "valueOptions": ["pmason", "jbodart"]
-  },
-  "lead_statistician": {
-    "type": "singleSelect",
-    "label": "Statistician",
-    "width": 100,
-    "valueOptions": ["pmason", "jbodart"]
+    "label": "Run",
+    "width": 20,
+    "pin": true,
+    "valueOptions": ["Y", "N"],
+    "heatmap": {
+      "Y": "#ddffcc",
+      "N": "#ffd6cc"
+    }
   }
 }

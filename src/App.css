@@ -32,6 +32,12 @@ pre {
 .App-link {
   color: #61dafb;
 }
+.gray {
+  color: #dddddd;
+}
+.black {
+  color: #000000;
+}
 
 @keyframes App-logo-spin {
   from {

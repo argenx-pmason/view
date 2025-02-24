@@ -1,9 +1,12 @@
 [
   {
-    "compound": "argx-119",
     "indication": "hv",
     "study": "argx-119-2201",
-    "lead_statistician": "Jeroen",
-    "lead_programmer": "Jeroen"
+    "toggle": "Y"
+  },
+  {
+    "indication": "itp",
+    "study": "argx-113-1234",
+    "toggle": "N"
   }
 ]

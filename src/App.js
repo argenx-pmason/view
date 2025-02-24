@@ -55,6 +55,7 @@ import {
   Visibility,
   Delete,
   FileCopy,
+  Insights,
   Remove,
   CloudDownload,
 } from "@mui/icons-material";
@@ -65,7 +66,7 @@ import "./App.css";
 import localData from "./data.json";
 import localMeta from "./metadata.json";
 import localInfo from "./info.json";
-import links from "./links.json";
+import { upload, logon, getFileVersions } from "./utility";
 // apply the license for data grid
 LicenseInfo.setLicenseKey(
   "6b1cacb920025860cc06bcaf75ee7a66Tz05NDY2MixFPTE3NTMyNTMxMDQwMDAsUz1wcm8sTE09c3Vic2NyaXB0aW9uLEtWPTI="
@@ -73,14 +74,30 @@ LicenseInfo.setLicenseKey(
 function App() {
   const apiRef = useGridApiRef(),
     { readString } = usePapaParse(),
-    keepBackups = 20, // keep this many backups of data, which are saved each time you open the data in the app
+    // keepBackups = 20, // keep this many backups of data, which are saved each time you open the data in the app
     { href, host } = window.location, // get the URL so we can work out where we are running
-    mode = href.startsWith("http://localhost") ? "local" : "remote",
+    mode = href.startsWith("http://localhost") ? "local" : "remote";
+
+  let realhost;
+  if (host.includes("sharepoint")) {
+    realhost = "xarprod.ondemand.sas.com";
+  } else if (host.includes("localhost")) {
+    realhost = "xartest.ondemand.sas.com";
+  } else {
+    realhost = host;
+  }
+
+  const api = "https://" + realhost + "/lsaf/api",
+    [username, setUsername] = useState(""),
+    [password, setPassword] = useState(""),
+    [token, setToken] = useState(undefined),
+    [encryptedPassword, setEncryptedPassword] = useState(""),
     lsafType =
       href.includes("/webdav/work") || href.includes("/filedownload/work")
         ? "work"
         : "repo",
     webDavPrefix = "https://" + host + "/lsaf/webdav/" + lsafType, // prefix for webdav access to LSAF
+    fileDownloadPrefix = "https://" + host + "/lsaf/filedownload/sdd:",
     fileViewerPrefix =
       "https://" +
       host +
@@ -92,6 +109,8 @@ function App() {
       host +
       "/lsaf/filedownload/sdd:/general/biostat/apps/logviewer/index.html?log=",
     params = new URLSearchParams(document.location.search),
+    rLinks = `${webDavPrefix}/general/biostat/apps/control/links.json`,
+    [links, setLinks] = useState(null),
     handleClickMenu = (event) => {
       setAnchorEl(event.currentTarget);
     },
@@ -101,17 +120,19 @@ function App() {
     [pinnedColumns, setPinnedColumns] = useState({ left: [] }),
     [globalMeta, setGlobalMeta] = useState({}),
     [globalFilters, setGlobalFilters] = useState([]),
+    [sortModel, setSortModel] = useState(null),
     tempGlobalFilters = [],
     handlePinnedColumnsChange = useCallback((updatedPinnedColumns) => {
       setPinnedColumns(updatedPinnedColumns);
     }, []),
+    [disableRowKey, setDisableRowKey] = useState(null),
     [hiddenColumns, setHiddenColumns] = useState([]),
     [hiddenColumnsObject, setHiddenColumnsObject] = useState({}),
     [timestampsToDo, setTimestampsToDo] = useState([]),
     // [uniqueValues, setUniqueValues] = useState([]),
     [datefilters, setDatefilters] = useState(null),
     [availableKeys, setAvailableKeys] = useState([]),
-    [showBackups, setShowBackups] = useState(false),
+    [showVersions, setShowVersions] = useState(false),
     [openSnackbar, setOpenSnackbar] = useState(false),
     [isArray, setIsArray] = useState(false),
     [quickFilterValues, setQuickFilterValues] = useState(null),
@@ -129,17 +150,69 @@ function App() {
     [rows, setRows] = useState([]),
     [cols, setCols] = useState([]),
     [current, setCurrent] = useState(null),
+    [info, setInfo] = useState(null),
+    [meta, setMeta] = useState(null),
     [key, setKey] = useState(null),
     [dataUrl, setDataUrl] = useState(null),
     [metaUrl, setMetaUrl] = useState(null),
     [infoUrl, setInfoUrl] = useState(null),
-    [backups, setBackups] = useState([]),
+    [versions, setVersions] = useState(null),
     [checked, setChecked] = useState(false),
     [infoHtml, setInfoHtml] = useState(null),
     [originalData, setOriginalData] = useState([]),
     [contextMenu, setContextMenu] = useState(null),
     [selectedValue, setSelectedValue] = useState(null),
     [selectedField, setSelectedField] = useState(null),
+    [rowReordering, setRowReordering] = useState(false),
+    [urls, setUrls] = useState([]),
+    handleLink = (id) => {
+      const pressed = urls.filter((l) => l.id === id)[0],
+        buttUrl = pressed.url;
+      console.log(
+        "button",
+        id,
+        "buttons",
+        buttons,
+        "pressed",
+        pressed,
+        buttUrl
+      );
+      window.open(buttUrl, "_blank");
+    },
+    populateLinks = async () => {
+      const res = await fetch(rLinks),
+        tempLinks = await res.json();
+      console.log("res", res, "tempLinks", tempLinks);
+      setLinks(tempLinks);
+    },
+    populateVersions = async () => {
+      const tempVersions = await getFileVersions(api, token, current),
+        { items } = tempVersions,
+        tempVersions2 = items.map((i) => i.version);
+      setVersions(tempVersions2);
+      console.log("tempVersions", tempVersions, "tempVersions2", tempVersions2);
+    },
+    [buttons, setButtons] = useState([]),
+    handleButton = (id) => {
+      const pressed = buttons.filter((b) => b.id === id)[0],
+        buttKey = pressed.key,
+        buttValue = pressed.value;
+      console.log(
+        "button",
+        id,
+        "buttons",
+        buttons,
+        "pressed",
+        pressed,
+        buttKey,
+        buttValue
+      );
+      const newRows = rows.map((r) => {
+        r[buttKey] = buttValue;
+        return r;
+      });
+      setRows(newRows);
+    },
     handleContextMenu = (event) => {
       event.preventDefault();
       const { target } = event,
@@ -499,7 +572,7 @@ function App() {
       );
       return newRow;
     },
-    updateJsonFile = (file, content) => {
+    updateJsonFile = async (file, content) => {
       console.log(
         "updateJsonFile - file:",
         file,
@@ -523,50 +596,71 @@ function App() {
       // handle inserting table into the right place in keyed object
       if (key) {
         originalData[key] = contentWithoutId;
-        tempContent = JSON.stringify(originalData);
+        // tempContent = JSON.stringify(originalData);
+        tempContent = originalData;
         console.log("originalData - with changed table inserted", originalData);
       } else {
-        tempContent = JSON.stringify(contentWithoutId);
+        tempContent = contentWithoutId;
+        // tempContent = JSON.stringify(contentWithoutId);
       }
-      backup(tempContent);
-      // try to delete the file, in case it is there already, otherwise the PUT will not work
-      fetch(file, {
-        method: "DELETE",
-      })
-        .then((response) => {
-          fetch(file, {
-            method: "PUT",
-            headers: {
-              "Content-type": "application/json; charset=UTF-8",
-            },
-            body: tempContent,
-          })
-            .then((response) => {
-              // add the id back
-              setRows(content.map((d, i) => ({ ...d, id: uuidv4() })));
-              setMessage(response.ok ? "File saved" : "File not saved");
-              setOpenSnackbar(true);
-              response.text().then(function (text) {
-                console.log("text", text);
-              });
-            })
-            .catch((err) => {
-              // add the id back
-              setRows(content.map((d, i) => ({ ...d, id: uuidv4() })));
-              setMessage(err);
-              setOpenSnackbar(true);
-              console.log("PUT err: ", err);
-            });
-        })
-        .catch((err) => {
-          // add the id back
-          setRows(content.map((d, i) => ({ ...d, id: uuidv4() })));
-          setMessage(
-            "DELETE was attempted before the new version was saved - but the DELETE failed. (see console)"
-          );
-          setOpenSnackbar(true);
-          console.log("DELETE err: ", err);
-        });
+      // const pos = file.search("/webdav/repo/"),
+      //   f = file.slice(pos + 12);
+      const pos = file.search("/sdd:/"),
+        f = file.slice(pos + 5);
+      console.log("api", api, "f", f);
+
+      const uploadResponse = await upload(
+        api,
+        f,
+        tempContent,
+        token,
+        true,
+        "Uploaded from View app using the upload REST API"
+      );
+      console.log("response from upload: ", uploadResponse);
+
+      setMessage("Upload = " + uploadResponse);
+      setOpenSnackbar(true);
+
+      // backup(tempContent);
+      // // try to delete the file, in case it is there already, otherwise the PUT will not work
+      // fetch(file, {
+      //   method: "DELETE",
+      // })
+      //   .then((response) => {
+      //     fetch(file, {
+      //       method: "PUT",
+      //       headers: {
+      //         "Content-type": "application/json; charset=UTF-8",
+      //       },
+      //       body: tempContent,
+      //     })
+      //       .then((response) => {
+      //         // add the id back
+      //         setRows(content.map((d, i) => ({ ...d, id: uuidv4() })));
+      //         setMessage(response.ok ? "File saved" : "File not saved");
+      //         setOpenSnackbar(true);
+      //         response.text().then(function (text) {
+      //           console.log("text", text);
+      //         });
+      //       })
+      //       .catch((err) => {
+      //         // add the id back
+      //         setRows(content.map((d, i) => ({ ...d, id: uuidv4() })));
+      //         setMessage(err);
+      //         setOpenSnackbar(true);
+      //         console.log("PUT err: ", err);
+      //       });
+      //   })
+      //   .catch((err) => {
+      //     // add the id back
+      //     setRows(content.map((d, i) => ({ ...d, id: uuidv4() })));
+      //     setMessage(
+      //       "DELETE was attempted before the new version was saved - but the DELETE failed. (see console)"
+      //     );
+      //     setOpenSnackbar(true);
+      //     console.log("DELETE err: ", err);
+      //   });
     },
     [showMeta, setShowMeta] = useState(false),
     [allowSave, setAllowSave] = useState(true),
@@ -603,83 +697,105 @@ function App() {
       // find any sort key that may be in the metadata
       const sortBy = Object.keys(mmm)
         .map((k) => {
-          if (mmm[k].sort) return { key: k, sort: mmm[k].sort };
+          if (mmm[k].sort)
+            return {
+              key: k,
+              sort: mmm[k].sort,
+              order: Math.abs(mmm[k].sort),
+              sign: Math.sign(mmm[k].sort),
+            };
           else return undefined;
         })
         .filter((s) => {
           return s !== undefined;
         });
-
       if (sortBy.length > 0) {
         // sort multiple sort keys
         sortBy.sort((a, b) => {
-          return a.sort - b.sort;
+          return a.order - b.order;
         }); // sort by the sort order
+        const tempSortModel = sortBy.map((s) => ({
+          field: s.key,
+          sort: s.sign > 0 ? "asc" : "desc",
+        }));
+        console.log("sortBy", sortBy, "tempSortModel", tempSortModel);
+        setSortModel(tempSortModel);
+        // sorting: {
+        //   sortModel: [{ field: 'rating', sort: 'desc' }],
+        // },
         // make a sort key that combines the things we want to sort by
         // add a sort key to each row
-        console.log("ddd", ddd);
-        ddd.forEach((d) => {
-          const sortKey = sortBy.map((s) => s.key),
-            sortValue = sortKey.map((k) => d[k]).join(" ");
-          d["#sortKey"] = sortValue;
-        });
-        ddd.sort((a, b) => {
-          const sortKey = [sortBy[0].key];
-          if (a["#sortKey"] && b["#sortKey"]) {
-            if (mmm[sortKey].sort > 0)
-              return a["#sortKey"].localeCompare(b["#sortKey"]);
-            else return b["#sortKey"].localeCompare(a["#sortKey"]);
-          }
-          return 0;
-        });
+        // console.log("ddd", ddd);
+        // ddd.forEach((d) => {
+        //   const sortKey = sortBy.map((s) => s.key),
+        //     sortValue = sortKey.map((k) => d[k]).join(" ");
+        //   d["#sortKey"] = sortValue;
+        // });
+        // sorted=  objs.sort((a, b) =>
+        //   a.lastName.localeCompare(b.lastName) ||
+        //   a.firstName.localeCompare(b.firstName) ||
+        //   a.age-b.age
+        // );
+        // ddd.sort((a, b) => {
+        //   const sortKey = [sortBy[0].key];
+        //   if (a["#sortKey"] && b["#sortKey"]) {
+        //     if (mmm[sortKey].sort > 0)
+        //       return a["#sortKey"].localeCompare(b["#sortKey"]);
+        //     else return b["#sortKey"].localeCompare(a["#sortKey"]);
+        //   }
+        //   return 0;
+        // });
       }
       setRows(ddd.map((d, i) => ({ ...d, id: uuidv4() }))); // add an id field to each row
       if (iii && iii.length > 0) setInfoHtml(iii.join(" "));
     },
-    loadBackup = (b) => {
-      setShowBackups(false);
-      const loadedText1 = decodeURIComponent(
-        localStorage.getItem(b).replace(/\\/g, "")
-      );
-      console.log("loadedText1", loadedText1);
-      //if string starts with quote then strip first and last characters from string
-      const loadedText2 = loadedText1.startsWith('"')
-        ? loadedText1.slice(1, -1)
-        : loadedText1;
-      console.log("loadedText2", loadedText2);
-      const tempRows = JSON.parse(loadedText2).map((r) => ({
-        ...r,
-        id: uuidv4(),
-      }));
-      console.log("loading backup -> ", b, "tempRows", tempRows);
-      setRows(tempRows);
+    loadVersion = (b) => {
+      setShowVersions(false);
+      const currentVersion = `${current}?version=${b}`;
+      console.log("loading backup -> ", b, "currentVersion", currentVersion);
+      getData(currentVersion, meta, info);
+      // const loadedText1 = decodeURIComponent(
+      //   localStorage.getItem(b).replace(/\\/g, "")
+      // );
+      // console.log("loadedText1", loadedText1);
+      // //if string starts with quote then strip first and last characters from string
+      // const loadedText2 = loadedText1.startsWith('"')
+      //   ? loadedText1.slice(1, -1)
+      //   : loadedText1;
+      // console.log("loadedText2", loadedText2);
+      // const tempRows = JSON.parse(loadedText2).map((r) => ({
+      //   ...r,
+      //   id: uuidv4(),
+      // }));
+      // console.log("loading backup -> ", b, "tempRows", tempRows);
+      // setRows(tempRows);
     },
-    backup = (r) => {
-      // if we already have rows, then save them to localStorage as a backup with a key using date and time
-      if (r.length > 0) {
-        const backupKey = new Date().toISOString().replace(/:/g, "_"),
-          backups = Object.keys(localStorage)
-            .filter((k) => k.startsWith("backup"))
-            .sort((a, b) => a.localeCompare(b));
-        if (JSON.stringify(r).length < 10000) {
-          localStorage.setItem("backup-" + backupKey, JSON.stringify(r));
-        }
-        console.log("backups", backups);
-        if (backups.length > keepBackups) {
-          // only keep a limited number of backups, removing others
-          for (let i = 0; i <= backups.length - keepBackups; i++) {
-            console.log("removing", backups[i]);
-            localStorage.removeItem(backups[i]);
-          }
-        }
-      }
-    },
+    // backup = (r) => {
+    //   // if we already have rows, then save them to localStorage as a backup with a key using date and time
+    //   if (r.length > 0) {
+    //     const backupKey = new Date().toISOString().replace(/:/g, "_"),
+    //       backups = Object.keys(localStorage)
+    //         .filter((k) => k.startsWith("backup"))
+    //         .sort((a, b) => a.localeCompare(b));
+    //     if (JSON.stringify(r).length < 10000) {
+    //       localStorage.setItem("backup-" + backupKey, JSON.stringify(r));
+    //     }
+    //     console.log("backups", backups);
+    //     if (backups.length > keepBackups) {
+    //       // only keep a limited number of backups, removing others
+    //       for (let i = 0; i <= backups.length - keepBackups; i++) {
+    //         console.log("removing", backups[i]);
+    //         localStorage.removeItem(backups[i]);
+    //       }
+    //     }
+    //   }
+    // },
     [lastModified, setLastModified] = useState(null),
     getData = async (d, m, i, k) => {
       console.log("getData", "d", d, "m", m, "i", i, "k", k);
-      const dUrl = `${webDavPrefix}${d}`,
-        mUrl = `${webDavPrefix}${m}`,
-        iUrl = `${webDavPrefix}${i}`,
+      const dUrl = `${fileDownloadPrefix}${d}`,
+        mUrl = `${fileDownloadPrefix}${m}`,
+        iUrl = `${fileDownloadPrefix}${i}`,
         tempDatefilters = {};
       console.log("dUrl", dUrl, "mUrl", mUrl, "iUrl", iUrl);
       let metaData = {};
@@ -765,9 +881,29 @@ function App() {
       // handle the special metadata with keys that start with #
       // #viewonly - if this key is present, then the user cannot save the data back to the server
       metaKeys.forEach((k) => {
-        if (k === "#viewonly") setAllowSave(false);
+        console.log("k", k);
+        if (k === "#rowReordering") setRowReordering(true);
+        else if (k === "#viewonly") setAllowSave(false);
+        else if (k.startsWith("#button")) {
+          const button = metaData[k];
+          button.id = k;
+          console.log("button", button);
+          setButtons((b) => {
+            if (b.filter((bb) => bb.id === k).length > 0) return b;
+            else return [...b, button];
+          });
+        } else if (k.startsWith("#link")) {
+          const link = metaData[k];
+          link.id = k;
+          console.log("link", link);
+          setUrls((b) => {
+            if (b.filter((bb) => bb.id === k).length > 0) return b;
+            else return [...b, link];
+          });
+        }
       });
       dataKeys.forEach((k) => {
+        if (metaData[k]?.disable_row) setDisableRowKey(k);
         const tempHiddenColumns = hiddenColumns;
         if (metaData[k]?.hide) {
           tempHiddenColumns.push(k);
@@ -782,6 +918,8 @@ function App() {
           let headerName = k,
             type = "string",
             valueOptions = null,
+            locales = null,
+            localeOptions = null,
             width = null,
             link = false,
             linkvar = null,
@@ -804,6 +942,8 @@ function App() {
             headerName = metaData[k].label;
             type = metaData[k].type;
             valueOptions = metaData[k].valueOptions;
+            locales = metaData[k].locales;
+            localeOptions = metaData[k].localeOptions;
             width = metaData[k].width;
             link = metaData[k].link;
             linkvar = metaData[k].linkvar;
@@ -825,9 +965,66 @@ function App() {
           }
 
           let valueGetter = null;
-          if (type === "date" || type === "dateTime") {
+          if (type === "date") {
             valueGetter = (row) => {
-              return row && new Date(row.value);
+              if (row.value && row.value.length > 10) {
+                const d = new Date(row.value);
+                // add 12hours to date
+                d.setHours(d.getHours() + 12);
+                return row && d;
+              } else return "";
+            };
+          } else if (type === "dateTime") {
+            valueGetter = (row) => {
+              if (row.value && row.value.length > 10) {
+                return row && new Date(row.value);
+              } else return "";
+            };
+          }
+          let valueFormatter = null;
+          if (localeOptions || locales) {
+            valueFormatter = (row) => {
+              const { value } = row;
+              // console.log(
+              //   "row",
+              //   row,
+              //   "value",
+              //   value,
+              //   "typeof value",
+              //   typeof value,
+              //   "localeOptions",
+              //   localeOptions,
+              //   "locales",
+              //   locales
+              // );
+              let formattedValue = "";
+              if (value == null || value === "") {
+                return formattedValue;
+              }
+              const simpleDate = value.toLocaleDateString();
+              if (simpleDate === "01/01/1970") return formattedValue;
+              if (locales && localeOptions) {
+                formattedValue = `${value.toLocaleDateString(
+                  locales,
+                  localeOptions
+                )}`;
+              }
+              if (locales) {
+                formattedValue = `${value.toLocaleDateString(locales)}`;
+              }
+              if (localeOptions) {
+                formattedValue = `${value.toLocaleDateString(
+                  undefined,
+                  localeOptions
+                )}`;
+              }
+              if (
+                formattedValue === "Invalid Date" ||
+                formattedValue === "Thu, 1 Jan 1970"
+              )
+                formattedValue = null;
+              // console.log("formattedValue", formattedValue);
+              return formattedValue;
             };
           }
           let renderCell = null;
@@ -858,6 +1055,8 @@ function App() {
                     ? fileViewerPrefix + params.value + filever
                     : params.value > " " && link && linkvar
                     ? params.value.replace("{{linkvar}}", row[linkvar])
+                    : link && linkvar
+                    ? link.replace("{{linkvar}}", row[linkvar])
                     : params.value > " " && link
                     ? params.value
                     : null;
@@ -1013,8 +1212,15 @@ function App() {
               let colorR = null,
                 age = null,
                 dateText = params.value
-                  ? params.value.toLocaleDateString()
+                  ? params.value.toLocaleDateString("en-BE", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })
                   : null;
+              if (dateText === "Invalid Date" || dateText === "Thu, 1 Jan 1970")
+                dateText = null;
               if (params.value) {
                 const then = new Date(params.value),
                   now = new Date(),
@@ -1076,6 +1282,7 @@ function App() {
             type: type,
             valueGetter: valueGetter,
             valueOptions: valueOptions,
+            valueFormatter: valueFormatter,
             renderCell: renderCell,
             width: width,
             description: description,
@@ -1087,6 +1294,7 @@ function App() {
               editable: true,
               type: type,
               valueGetter: valueGetter,
+              valueFormatter: valueFormatter,
               valueOptions: valueOptions,
               renderCell: renderCell,
               width: width,
@@ -1138,7 +1346,7 @@ function App() {
 
       sortDataAndSetRows(useData, localMeta, localInfo);
 
-      backup(useData);
+      // backup(useData);
       const metaKeys = Object.keys(localMeta),
         dataKeys = Object.keys(useData[0]),
         combinedKeys = metaKeys
@@ -1148,10 +1356,28 @@ function App() {
       // handle the special metadata with keys that start with #
       // #viewonly - if this key is present, then the user cannot save the data back to the server
       metaKeys.forEach((k) => {
-        if (k === "#viewonly") setAllowSave(false);
+        if (k === "#rowReordering") setRowReordering(true);
+        else if (k === "#viewonly") setAllowSave(false);
+        else if (k.startsWith("#button")) {
+          const button = localMeta[k];
+          button.id = k;
+          setButtons((b) => {
+            if (b.filter((bb) => bb.id === k).length > 0) return b;
+            else return [...b, button];
+          });
+        } else if (k.startsWith("#link")) {
+          const link = localMeta[k];
+          link.id = k;
+          console.log("link", link);
+          setUrls((b) => {
+            if (b.filter((bb) => bb.id === k).length > 0) return b;
+            else return [...b, link];
+          });
+        }
       });
       dataKeys.forEach((k) => {
         // console.log("dataKeys", dataKeys, "localMeta[k]", localMeta[k]);
+        if (localMeta[k]?.disable_row) setDisableRowKey(k);
         // handle hidden columns
         const tempHiddenColumns = hiddenColumns;
         if (localMeta[k]?.hide) {
@@ -1179,6 +1405,8 @@ function App() {
           let headerName = k,
             type = "string",
             valueOptions = null,
+            locales = null,
+            localeOptions = null,
             width = null,
             log = false,
             logverKeyToUse = null,
@@ -1201,6 +1429,8 @@ function App() {
             headerName = localMeta[k].label;
             type = localMeta[k].type;
             valueOptions = localMeta[k].valueOptions;
+            locales = localMeta[k].locales;
+            localeOptions = localMeta[k].localeOptions;
             width = localMeta[k].width;
             log = localMeta[k].log;
             logverKeyToUse = localMeta[k].logver;
@@ -1221,9 +1451,37 @@ function App() {
             multiline = localMeta[k].multiline;
           }
           let valueGetter = null;
-          if (type === "date" || type === "dateTime") {
+          if (type === "date") {
             valueGetter = (row) => {
-              return row && new Date(row.value);
+              if (row.value && row.value.length > 10) {
+                const d = new Date(row.value);
+                // add 12hours to date
+                d.setHours(d.getHours() + 12);
+                return row && d;
+              } else return "";
+            };
+          } else if (type === "dateTime") {
+            valueGetter = (row) => {
+              if (row.value && row.value.length > 10) {
+                return row && new Date(row.value);
+              } else return "";
+            };
+          }
+          let valueFormatter = null;
+          if (localeOptions || locales) {
+            valueFormatter = (value) => {
+              if (value == null || value === "") {
+                return "";
+              }
+              if (locales && localeOptions) {
+                return `${value.toLocaleDateString(locales, localeOptions)}`;
+              }
+              if (locales) {
+                return `${value.toLocaleDateString(locales)}`;
+              }
+              if (localeOptions) {
+                return `${value.toLocaleDateString(undefined, localeOptions)}`;
+              }
             };
           }
           let renderCell = null;
@@ -1401,15 +1659,20 @@ function App() {
               let colorR = null,
                 age = null,
                 dateText = params.value
-                  ? params.value.toLocaleDateString()
+                  ? params.value.toLocaleDateString("en-BE", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })
                   : null;
+              if (dateText === "Invalid Date") dateText = null;
               if (params.value) {
                 const then = new Date(params.value),
                   now = new Date(),
                   diffTime = Math.abs(then - now);
                 age = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
               }
-              console.log(params.value, age, dateText);
               for (const element of heatmapAge) {
                 const from = element?.from,
                   to = element?.to,
@@ -1464,6 +1727,7 @@ function App() {
             editable: true,
             type: type,
             valueGetter: valueGetter,
+            valueFormatter: valueFormatter,
             valueOptions: valueOptions,
             renderCell: renderCell,
             width: width,
@@ -1476,6 +1740,7 @@ function App() {
               editable: true,
               type: type,
               valueGetter: valueGetter,
+              valueFormatter: valueFormatter,
               valueOptions: valueOptions,
               renderCell: renderCell,
               width: width,
@@ -1487,7 +1752,8 @@ function App() {
         })
       );
       setDataUrl(
-        "https://" +
+        fileDownloadPrefix +
+          "https://" +
           host +
           "/lsaf/webdav/" +
           lsafType +
@@ -1497,9 +1763,27 @@ function App() {
       setDatefilters(tempDatefilters);
     };
 
+  // if encrypting password failed, then open the encrypt app before continuing
   useEffect(() => {
-    console.log("cols", cols);
-  }, [cols]);
+    // default value for token is undefined, if logon is attempted and fails then it is set to null
+    if (token === null) {
+      setMessage(
+        "😲 Logon failed - please re-enter your username & password and then return to this page to refresh it. 👍"
+      );
+      setOpenSnackbar(true);
+      setTimeout(() => {
+        window
+          .open(
+            "https://" +
+              host +
+              "/lsaf/webdav/" +
+              lsafType +
+              "/general/biostat/apps/encrypt/index.html"
+          )
+          .focus();
+      }, 3000);
+    }
+  }, [token, host, lsafType]);
 
   // fetch a JSON file to display in table
   useEffect(() => {
@@ -1508,7 +1792,20 @@ function App() {
     const tempBackups = Object.keys(localStorage)
       .filter((k) => k.startsWith("backup"))
       .sort((a, b) => a.localeCompare(b));
-    setBackups(tempBackups);
+
+    setVersions(tempBackups);
+    const tempUsername = localStorage.getItem("username"),
+      tempEncryptedPassword = localStorage.getItem("encryptedPassword");
+    setUsername(tempUsername);
+    setEncryptedPassword(tempEncryptedPassword);
+
+    if (rLinks) {
+      populateLinks();
+    }
+
+    // logon if we have the info needed to do it successfully
+    logon(api, tempUsername, tempEncryptedPassword, setToken);
+
     if (mode === "local") {
       handleLocal();
     } else {
@@ -1537,7 +1834,7 @@ function App() {
       if ("lsaf" in parsed) {
         setCurrent(parsed.lsaf);
         document.title = parsed.lsaf;
-        url = `${webDavPrefix}${parsed.lsaf}`;
+        url = `${fileDownloadPrefix}${parsed.lsaf}`;
         setDataUrl(url);
       }
       if ("title" in parsed) {
@@ -1552,7 +1849,7 @@ function App() {
         setAllowSave(true);
       }
       if (!metaUrl && "meta" in parsed) {
-        setMetaUrl(parsed.meta);
+        setMeta(parsed.meta);
         url = `${webDavPrefix}${parsed.meta}`;
         setMetaUrl(url);
         setShowMeta(true);
@@ -1560,7 +1857,7 @@ function App() {
         setShowMeta(false);
       }
       if (!infoUrl && "info" in parsed) {
-        setInfoUrl(parsed.info);
+        setInfo(parsed.info);
         url = `${webDavPrefix}${parsed.info}`;
         setInfoUrl(url);
       }
@@ -1586,9 +1883,17 @@ function App() {
   }, [href, mode, key]);
 
   useEffect(() => {
+    if (!token) return;
+    // get versions of the current file
+    populateVersions();
+  }, [token]);
+
+  useEffect(() => {
     if (!isArray) setChecked(true);
     else setChecked(false);
   }, [isArray]);
+
+  console.log("buttons", buttons, "urls", urls, "cols", cols);
 
   return (
     <div className="App">
@@ -1608,20 +1913,28 @@ function App() {
               <MenuIcon />
             </IconButton>
           </Tooltip>
-          <Box
-            sx={{
-              border: 1,
-              borderRadius: 2,
-              color: "black",
-              fontWeight: "bold",
-              boxShadow: 3,
-              fontSize: 14,
-              height: 23,
-              padding: 0.3,
-            }}
+          <Tooltip
+            title={
+              username && username.length > 1
+                ? `Logged in as ${username}`
+                : "Not logged in"
+            }
           >
-            &nbsp;&nbsp;{title}&nbsp;&nbsp;
-          </Box>
+            <Box
+              sx={{
+                border: 1,
+                borderRadius: 2,
+                color: "black",
+                fontWeight: "bold",
+                boxShadow: 3,
+                fontSize: 14,
+                height: 23,
+                padding: 0.3,
+              }}
+            >
+              &nbsp;&nbsp;{title}&nbsp;&nbsp;
+            </Box>
+          </Tooltip>
           <Tooltip title="Switch between editor and JSON views">
             <Switch
               checked={checked}
@@ -1648,39 +1961,86 @@ function App() {
               </Button>
             </span>
           </Tooltip>
-          <Button
-            variant="contained"
-            disabled={!allowSave}
-            color="info"
-            startIcon={<Add sx={{ fontSize: 10 }} />}
-            onClick={addRecord}
-            size="small"
-            sx={{ m: 1, fontSize: 10 }}
-          >
-            Add
-          </Button>
-          <Button
-            variant="contained"
-            disabled={!allowSave}
-            color="info"
-            startIcon={<Delete sx={{ fontSize: 10 }} />}
-            onClick={deleteRecord}
-            size="small"
-            sx={{ m: 1, fontSize: 10 }}
-          >
-            Delete
-          </Button>
-          <Button
-            variant="contained"
-            disabled={!allowSave}
-            color="info"
-            startIcon={<FileCopy sx={{ fontSize: 10 }} />}
-            onClick={duplicateRecord}
-            size="small"
-            sx={{ m: 1, fontSize: 10 }}
-          >
-            Duplicate
-          </Button>
+          <Tooltip title="Add a record to the bottom of table">
+            <Button
+              variant="contained"
+              disabled={!allowSave}
+              color="info"
+              startIcon={<Add sx={{ fontSize: 10 }} />}
+              onClick={addRecord}
+              size="small"
+              sx={{ m: 1, fontSize: 10 }}
+            >
+              Add
+            </Button>
+          </Tooltip>
+          <Tooltip title="Delete the selected row or rows from table">
+            {" "}
+            <Button
+              variant="contained"
+              disabled={!allowSave}
+              color="info"
+              startIcon={<Delete sx={{ fontSize: 10 }} />}
+              onClick={deleteRecord}
+              size="small"
+              sx={{ m: 1, fontSize: 10 }}
+            >
+              Del
+            </Button>
+          </Tooltip>
+          <Tooltip title="Duplicate the currently selected row or rows and put them at the bottom of the table">
+            <Button
+              variant="contained"
+              disabled={!allowSave}
+              color="info"
+              startIcon={<FileCopy sx={{ fontSize: 10 }} />}
+              onClick={duplicateRecord}
+              size="small"
+              sx={{ m: 1, fontSize: 10 }}
+            >
+              Dup
+            </Button>
+          </Tooltip>
+          {buttons.map((b, i) => {
+            return (
+              <Tooltip title={b.tooltip} key={"butt" + i}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  color="warning"
+                  sx={{
+                    mr: 1,
+                    fontSize: 10,
+                    padding: "2px 5px",
+                    minWidth: "10px",
+                  }}
+                  onClick={() => handleButton(b.id)}
+                >
+                  {b.label}
+                </Button>
+              </Tooltip>
+            );
+          })}
+          {urls.map((l, i) => {
+            return (
+              <Tooltip title={l.tooltip} key={"link" + i}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  color="secondary"
+                  sx={{
+                    mr: 1,
+                    fontSize: 10,
+                    padding: "2px 5px",
+                    minWidth: "10px",
+                  }}
+                  onClick={() => handleLink(l.id)}
+                >
+                  {l.label}
+                </Button>
+              </Tooltip>
+            );
+          })}
           <Tooltip title="View data from LSAF as a JSON file">
             <span>
               <Button
@@ -1789,12 +2149,30 @@ function App() {
             </Box>
           </Tooltip>
           <Box sx={{ flexGrow: 1 }}></Box>
-          <Tooltip title="Load a backup">
+          <Tooltip title="Pivot table & graph with this data">
+            <IconButton
+              color="success"
+              // sx={{ mr: 2 }}
+              onClick={() => {
+                window
+                  .open(
+                    "https://" +
+                      host +
+                      `/lsaf/filedownload/sdd%3A///general/biostat/apps/pivot/index.html?data=${current}`,
+                    "_blank"
+                  )
+                  .focus();
+              }}
+            >
+              <Insights />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Load a different version">
             <IconButton
               color="info"
               // sx={{ mr: 2 }}
               onClick={() => {
-                setShowBackups(true);
+                setShowVersions(true);
               }}
             >
               <CloudDownload />
@@ -1820,6 +2198,7 @@ function App() {
             <DataGridPro
               columns={cols}
               rows={rows}
+              rowReordering={rowReordering}
               // rowHeight={22}
               getRowHeight={() => "auto"}
               density="compact"
@@ -1843,6 +2222,11 @@ function App() {
                 padding: 1,
                 mt: 6,
               }}
+              getRowClassName={(params) => {
+                if (disableRowKey)
+                  return params.row[disableRowKey] ? "gray" : "black";
+                else return "black";
+              }}
               onCellEditStart={handleCellEditStart}
               onCellEditStop={handleCellEditStop}
               processRowUpdate={processRowUpdate}
@@ -1859,6 +2243,7 @@ function App() {
                     quickFilterValues: quickFilterValues,
                   },
                 },
+                sorting: { sortModel: sortModel },
               }}
             />
           ) : (
@@ -1909,45 +2294,47 @@ function App() {
         transformOrigin={{ horizontal: "right", vertical: "top" }}
         anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
       >
-        {links.map((t, id) => (
-          <MenuItem key={"menuItem" + id} onClick={handleCloseMenu}>
-            <Tooltip key={"tt" + id}>
-              <Box
-                color={"success"}
-                size="small"
-                variant="outlined"
-                onClick={() => {
-                  window.open(t.url, "_blank").focus();
-                }}
-                // sx={{ mb: 1 }}
-              >
-                {t.name}
-              </Box>
-            </Tooltip>
-          </MenuItem>
-        ))}
+        {links &&
+          links.map((t, id) => (
+            <MenuItem key={"menuItem" + id} onClick={handleCloseMenu}>
+              <Tooltip key={"tt" + id}>
+                <Box
+                  color={"success"}
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {
+                    window.open(t.url, "_blank").focus();
+                  }}
+                  // sx={{ mb: 1 }}
+                >
+                  {t.name}
+                </Box>
+              </Tooltip>
+            </MenuItem>
+          ))}
       </Menu>
 
       {/* Dialog with General info about this screen */}
       <Dialog
         fullWidth
         maxWidth="xl"
-        onClose={() => setShowBackups(false)}
-        open={showBackups}
+        onClose={() => setShowVersions(false)}
+        open={showVersions}
       >
-        <DialogTitle>Load a backup</DialogTitle>
+        <DialogTitle>Load a version</DialogTitle>
         <DialogContent>
-          {backups.map((b, i) => (
-            <Chip
-              sx={{
-                m: 0.5,
-                backgroundColor: i % 2 === 0 ? "lightblue" : "lightgreen",
-              }}
-              key={"chip" + i}
-              label={b}
-              onClick={() => loadBackup(b)}
-            />
-          ))}
+          {versions &&
+            versions.map((b, i) => (
+              <Chip
+                sx={{
+                  m: 0.5,
+                  backgroundColor: i % 2 === 0 ? "lightblue" : "lightgreen",
+                }}
+                key={"chip" + i}
+                label={b}
+                onClick={() => loadVersion(b)}
+              />
+            ))}
         </DialogContent>
       </Dialog>
 
