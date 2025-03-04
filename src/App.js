@@ -58,6 +58,7 @@ import {
   Insights,
   Remove,
   CloudDownload,
+  QuestionMarkRounded,
 } from "@mui/icons-material";
 import { v4 as uuidv4 } from "uuid";
 import { usePapaParse } from "react-papaparse";
@@ -164,6 +165,9 @@ function App() {
     [selectedValue, setSelectedValue] = useState(null),
     [selectedField, setSelectedField] = useState(null),
     [rowReordering, setRowReordering] = useState(false),
+    [hideDataButton, setHideDataButton] = useState(false),
+    [hideMetaButton, setHideMetaButton] = useState(false),
+    [validUserids, setValidUserids] = useState(null),
     [urls, setUrls] = useState([]),
     handleLink = (id) => {
       const pressed = urls.filter((l) => l.id === id)[0],
@@ -366,62 +370,64 @@ function App() {
 
           {datefilters &&
             Array.from(Object.keys(datefilters)).map((df, id) => {
-              const u = datefilters[df],
-                k = Object.keys(u)[0],
-                v = u[k];
-              // op = k === "lt" ? "is before" : k === "gt" ? "is after" : k;
-              // console.log("df", df, "u", u, "k", k, "v", v, "op", op);
-              return (
-                <Button
-                  color="warning"
-                  variant="contained"
-                  size="small"
-                  key={"key-" + id}
-                  sx={{ fontSize: 10, fontWeight: "bold", minWidth: 10 }}
-                  onClick={(e, id) => {
-                    console.log(
-                      apiRef,
-                      apiRef.current.state,
-                      apiRef.current.store
-                    );
-                    const currentFilter =
-                      apiRef.current.state.filter.filterModel.items;
-                    let today = new Date();
-                    let operator = "is";
-                    if (k === "lt" && !e.ctrlKey) {
-                      operator = "before";
-                      today.setDate(today.getDate() + v);
-                    } else if (k === "lt" && e.ctrlKey) {
-                      operator = "after";
-                      today.setDate(today.getDate() - v);
-                    }
-                    let compareValue = today.toISOString().slice(0, 10),
-                      newFilter = [
-                        ...currentFilter,
-                        {
-                          field: df,
-                          operator: operator,
-                          value: compareValue,
-                          id: id,
-                        },
-                      ];
+              return datefilters[df].map((u) => {
+                const // u = datefilters[df],
+                  k = Object.keys(u)[0],
+                  v = u[k];
+                // op = k === "lt" ? "is before" : k === "gt" ? "is after" : k;
+                // console.log("df", df, "u", u, "k", k, "v", v, "op", op);
+                return (
+                  <Button
+                    color="warning"
+                    variant="contained"
+                    size="small"
+                    key={"key-" + id}
+                    sx={{ fontSize: 10, fontWeight: "bold", minWidth: 10 }}
+                    onClick={(e, id) => {
+                      console.log(
+                        apiRef,
+                        apiRef.current.state,
+                        apiRef.current.store
+                      );
+                      const currentFilter =
+                        apiRef.current.state.filter.filterModel.items;
+                      let today = new Date();
+                      let operator = "is";
+                      if (k === "lt" && !e.ctrlKey) {
+                        operator = "before";
+                        today.setDate(today.getDate() + v);
+                      } else if (k === "lt" && e.ctrlKey) {
+                        operator = "after";
+                        today.setDate(today.getDate() - v);
+                      }
+                      let compareValue = today.toISOString().slice(0, 10),
+                        newFilter = [
+                          ...currentFilter,
+                          {
+                            field: df,
+                            operator: operator,
+                            value: compareValue,
+                            id: id,
+                          },
+                        ];
 
-                    console.log(
-                      "operator",
-                      operator,
-                      "today",
-                      today,
-                      "compareValue",
-                      compareValue,
-                      "newFilter",
-                      newFilter
-                    );
-                    apiRef.current.upsertFilterItems(newFilter);
-                  }}
-                >
-                  {k ? df + " " + k + " " + v : "blank"}
-                </Button>
-              );
+                      console.log(
+                        "operator",
+                        operator,
+                        "today",
+                        today,
+                        "compareValue",
+                        compareValue,
+                        "newFilter",
+                        newFilter
+                      );
+                      apiRef.current.upsertFilterItems(newFilter);
+                    }}
+                  >
+                    {k ? df + " " + k + " " + v : "blank"}
+                  </Button>
+                );
+              });
             })}
 
           {(datefilters || globalFilters.length > 0) && (
@@ -883,8 +889,11 @@ function App() {
       metaKeys.forEach((k) => {
         console.log("k", k);
         if (k === "#rowReordering") setRowReordering(true);
-        else if (k === "#viewonly") setAllowSave(false);
-        else if (k.startsWith("#button")) {
+        if (k === "#viewonly") setAllowSave(false);
+        if (k === "#hideDataButton") setHideDataButton(true);
+        if (k === "#hideMetaButton") setHideMetaButton(true);
+        if (k === "#validUsers") setValidUserids(metaData[k]);
+        if (k.startsWith("#button")) {
           const button = metaData[k];
           button.id = k;
           console.log("button", button);
@@ -931,10 +940,13 @@ function App() {
             heatmap = null,
             heatmapRange = null,
             heatmapAge = null,
+            backgroundColorNonEmpty = null,
+            colorNonEmpty = null,
             heatmapCondition = null,
             filter = null,
             datefilter = null,
             pin = null,
+            editable = true,
             tooltip = null,
             description = null,
             multiline = false;
@@ -955,10 +967,15 @@ function App() {
             heatmap = metaData[k]?.heatmap;
             heatmapRange = metaData[k]?.heatmapRange;
             heatmapAge = metaData[k]["heatmap_age"];
+            backgroundColorNonEmpty = metaData[k]?.backgroundColorNonEmpty;
+            colorNonEmpty = metaData[k]?.colorNonEmpty;
             heatmapCondition = metaData[k]?.heatmapCondition;
             filter = metaData[k]?.filter;
             datefilter = metaData[k]?.datefilter;
             pin = metaData[k]?.pin;
+            // console.log("metaData[k]", metaData[k]);
+            if ("editable" in metaData[k]) editable = metaData[k]?.editable;
+            // console.log("allowSave", allowSave, "editable", editable);
             tooltip = metaData[k]?.tooltip;
             description = metaData[k]?.description;
             multiline = metaData[k]?.multiline;
@@ -966,13 +983,22 @@ function App() {
 
           let valueGetter = null;
           if (type === "date") {
-            valueGetter = (row) => {
-              if (row.value && row.value.length > 10) {
-                const d = new Date(row.value);
-                // add 12hours to date
-                d.setHours(d.getHours() + 12);
-                return row && d;
-              } else return "";
+            valueGetter = (value) => {
+              // console.log("valueGetter -->", value);
+              let returnDate = "";
+              if (Object.prototype.toString.call(value) === "[object Date]") {
+                const v2 = value.setHours(12); // set to noon
+                returnDate = new Date(v2);
+              } else if (typeof value === "string" && value.length >= 10) {
+                const d = new Date(value),
+                  d2 = d.setHours(12); // set to noon
+                returnDate = new Date(d2);
+              } else if (typeof value === "object" && "value" in value) {
+                const d = new Date(value.value),
+                  d2 = d.setHours(12); // set to noon
+                returnDate = new Date(d2);
+              }
+              return returnDate;
             };
           } else if (type === "dateTime") {
             valueGetter = (row) => {
@@ -983,37 +1009,89 @@ function App() {
           }
           let valueFormatter = null;
           if (localeOptions || locales) {
-            valueFormatter = (row) => {
-              const { value } = row;
+            valueFormatter = (value) => {
               // console.log(
-              //   "row",
-              //   row,
-              //   "value",
+              //   "valueFormatter --> value",
               //   value,
               //   "typeof value",
               //   typeof value,
-              //   "localeOptions",
-              //   localeOptions,
-              //   "locales",
-              //   locales
+              //   "Object.prototype.toString.call(value)",
+              //   Object.prototype.toString.call(value)
               // );
               let formattedValue = "";
-              if (value == null || value === "") {
+              if (value === undefined || value == null || value === "") {
                 return formattedValue;
               }
-              const simpleDate = value.toLocaleDateString();
-              if (simpleDate === "01/01/1970") return formattedValue;
+              if (
+                typeof value === "object" &&
+                "value" in value &&
+                value.value === undefined
+              ) {
+                return formattedValue;
+              }
+              let actualValue = null,
+                valueDate = null;
+
+              if (typeof value === "object" && "value" in value) {
+                if (
+                  Object.prototype.toString.call(value.value) ===
+                  "[object Date]"
+                ) {
+                  actualValue = value.value;
+                } else {
+                  const valueString = value.value.toString();
+                  actualValue = new Date(valueString);
+                }
+                // console.log(
+                //   "---",
+                //   value,
+                //   value.value,
+                //   actualValue,
+                //   "Object.prototype.toString.call(value.value)",
+                //   Object.prototype.toString.call(value.value)
+                // );
+              }
+              // console.log(
+              //   "+++",
+              //   typeof actualValue,
+              //   Object.prototype.toString.call(actualValue),
+              //   actualValue
+              // );
+              if (["string", "number"].includes(typeof actualValue)) {
+                const value2 = new Date(actualValue);
+                valueDate = new Date(value2.setHours(value2.setHours(12)));
+                console.log("@@@", value2, valueDate);
+                if (valueDate.toString() === "Invalid Date") {
+                  return value;
+                }
+              } else valueDate = actualValue;
+              // console.log(
+              //   "***",
+              //   "value",
+              //   value,
+              //   "actualValue",
+              //   actualValue,
+              //   "valueDate",
+              //   valueDate
+              // );
+              // only continue if the value is a date
+              if (Object.prototype.toString.call(valueDate) !== "[object Date]")
+                return formattedValue;
+              const simpleDate = valueDate.toLocaleDateString();
+              // console.log(valueDate, simpleDate);
+              if (simpleDate === "01/01/1970" || simpleDate === "Invalid Date")
+                return formattedValue;
               if (locales && localeOptions) {
-                formattedValue = `${value.toLocaleDateString(
+                formattedValue = `${valueDate.toLocaleDateString(
                   locales,
                   localeOptions
                 )}`;
               }
               if (locales) {
-                formattedValue = `${value.toLocaleDateString(locales)}`;
+                formattedValue = `${valueDate.toLocaleDateString(locales)}`;
               }
               if (localeOptions) {
-                formattedValue = `${value.toLocaleDateString(
+                formattedValue = `${valueDate.toLocaleDateString(
                   undefined,
                   localeOptions
                 )}`;
@@ -1023,7 +1101,7 @@ function App() {
                 formattedValue === "Thu, 1 Jan 1970"
               )
                 formattedValue = null;
-              // console.log("formattedValue", formattedValue);
+              console.log("formattedValue", formattedValue);
               return formattedValue;
             };
           }
@@ -1060,16 +1138,16 @@ function App() {
                     : params.value > " " && link
                     ? params.value
                     : null;
-              console.log(
-                "url",
-                url,
-                "params.value",
-                params.value,
-                "link",
-                link,
-                "linkvar",
-                linkvar
-              );
+              // console.log(
+              //   "url",
+              //   url,
+              //   "params.value",
+              //   params.value,
+              //   "link",
+              //   link,
+              //   "linkvar",
+              //   linkvar
+              // );
               if (typeof url === "string" && url.startsWith("http")) {
                 return (
                   <Tooltip title={tt}>
@@ -1115,9 +1193,15 @@ function App() {
               const color = applyHeatmap
                 ? heatmap[params.value] || "white"
                 : null;
+              let tt = null;
+              if (tooltip) {
+                const { row } = params;
+                tt = row[tooltip];
+                console.log("tt", tt);
+              }
               return (
                 <Box sx={{ backgroundColor: color, flexGrow: 1 }}>
-                  {params.value}
+                  <Tooltip title={tt}>{params.value}</Tooltip>
                 </Box>
               );
             };
@@ -1169,9 +1253,15 @@ function App() {
                 }
               }
               const color = applyHeatmap ? colorR || "white" : null;
+              let tt = null;
+              if (tooltip) {
+                const { row } = params;
+                tt = row[tooltip];
+                console.log("tt", tt);
+              }
               return (
                 <Box sx={{ backgroundColor: color, flexGrow: 1 }}>
-                  {params.value}
+                  <Tooltip title={tt}>{params.value}</Tooltip>
                 </Box>
               );
             };
@@ -1208,7 +1298,7 @@ function App() {
                   }
                 }
               }
-              console.log("params", params);
+              // console.log("params", params);
               let colorR = null,
                 age = null,
                 dateText = params.value
@@ -1240,9 +1330,32 @@ function App() {
                 }
               }
               const color = applyHeatmap ? colorR || "white" : null;
+              let tt = null;
+              if (tooltip) {
+                const { row } = params;
+                tt = row[tooltip];
+                console.log("tt", tt);
+              }
               return (
                 <Box sx={{ backgroundColor: color, flexGrow: 1 }}>
-                  {dateText}
+                  <Tooltip title={tt}>{dateText}</Tooltip>
+                </Box>
+              );
+            };
+          } else if (backgroundColorNonEmpty || colorNonEmpty) {
+            renderCell = (params) => {
+              // console.log(
+              //   params,
+              //   "backgroundColorNonEmpty",
+              //   backgroundColorNonEmpty,
+              //   "colorNonEmpty",
+              //   colorNonEmpty
+              // );
+              const fore = colorNonEmpty || "black",
+                back = backgroundColorNonEmpty || "white";
+              return (
+                <Box sx={{ backgroundColor: back, color: fore, flexGrow: 1 }}>
+                  {params.value}
                 </Box>
               );
             };
@@ -1278,11 +1391,21 @@ function App() {
           let columnDefinition = {
             field: k,
             headerName: headerName,
-            editable: true,
+            editable: editable && allowSave,
             type: type,
             valueGetter: valueGetter,
             valueOptions: valueOptions,
             valueFormatter: valueFormatter,
+            // valueParser: (v) => {
+            //   console.log("valueParser", v);
+            //   if (typeof v === "object") return v?.r;
+            //   else return v;
+            // },
+            // valueSetter: (v) => {
+            //   console.log("valueSetter", v);
+            //   if (typeof v === "object") return v?.r;
+            //   else return v;
+            // },
             renderCell: renderCell,
             width: width,
             description: description,
@@ -1291,10 +1414,14 @@ function App() {
             columnDefinition = {
               field: k,
               headerName: headerName,
-              editable: true,
+              editable: editable && allowSave,
               type: type,
               valueGetter: valueGetter,
               valueFormatter: valueFormatter,
+              // valueSetter: (value, row) => {
+              //   console.log("value", value, "row", row);
+              //   return { ...row };
+              // },
               valueOptions: valueOptions,
               renderCell: renderCell,
               width: width,
@@ -1357,8 +1484,11 @@ function App() {
       // #viewonly - if this key is present, then the user cannot save the data back to the server
       metaKeys.forEach((k) => {
         if (k === "#rowReordering") setRowReordering(true);
-        else if (k === "#viewonly") setAllowSave(false);
-        else if (k.startsWith("#button")) {
+        if (k === "#viewonly") setAllowSave(false);
+        if (k === "#hideDataButton") setHideDataButton(true);
+        if (k === "#hideMetaButton") setHideMetaButton(true);
+        if (k === "#validUsers") setValidUserids(localMeta[k]);
+        if (k.startsWith("#button")) {
           const button = localMeta[k];
           button.id = k;
           setButtons((b) => {
@@ -1418,10 +1548,13 @@ function App() {
             heatmap = null,
             heatmapRange = null,
             heatmapAge = null,
+            backgroundColorNonEmpty = null,
+            colorNonEmpty = null,
             heatmapCondition = null,
             filter = null,
             datefilter = null,
             pin = null,
+            editable = true,
             tooltip = null,
             description = null,
             multiline = false;
@@ -1442,10 +1575,13 @@ function App() {
             heatmap = localMeta[k].heatmap;
             heatmapRange = localMeta[k].heatmapRange;
             heatmapAge = localMeta[k]["heatmap_age"];
+            backgroundColorNonEmpty = localMeta[k]?.backgroundColorNonEmpty;
+            colorNonEmpty = localMeta[k]?.colorNonEmpty;
             heatmapCondition = localMeta[k].heatmapCondition;
             filter = localMeta[k].filter;
             datefilter = localMeta[k].datefilter;
             pin = localMeta[k].pin;
+            if ("editable" in localMeta[k]) editable = localMeta[k]?.editable;
             tooltip = localMeta[k].tooltip;
             description = localMeta[k].description;
             multiline = localMeta[k].multiline;
@@ -1692,6 +1828,23 @@ function App() {
                 </Box>
               );
             };
+          } else if (backgroundColorNonEmpty || colorNonEmpty) {
+            renderCell = (params) => {
+              console.log(
+                params,
+                "backgroundColorNonEmpty",
+                backgroundColorNonEmpty,
+                "colorNonEmpty",
+                colorNonEmpty
+              );
+              const fore = colorNonEmpty || "black",
+                back = backgroundColorNonEmpty || "white";
+              return (
+                <Box sx={{ backgroundColor: back, color: fore, flexGrow: 1 }}>
+                  {params.value}
+                </Box>
+              );
+            };
           }
           if (filter) {
             const tempUniqueValues = Array.from(
@@ -1724,10 +1877,14 @@ function App() {
           let columnDefinition = {
             field: k,
             headerName: headerName,
-            editable: true,
+            editable: editable && allowSave,
             type: type,
             valueGetter: valueGetter,
             valueFormatter: valueFormatter,
+            // valueSetter: (value, row) => {
+            //   console.log("value", value, "row", row);
+            //   return { ...row };
+            // },
             valueOptions: valueOptions,
             renderCell: renderCell,
             width: width,
@@ -1737,10 +1894,14 @@ function App() {
             columnDefinition = {
               field: k,
               headerName: headerName,
-              editable: true,
+              editable: editable && allowSave,
               type: type,
               valueGetter: valueGetter,
               valueFormatter: valueFormatter,
+              // valueSetter: (value, row) => {
+              //   console.log("value", value, "row", row);
+              //   return { ...row };
+              // },
               valueOptions: valueOptions,
               renderCell: renderCell,
               width: width,
@@ -1762,6 +1923,8 @@ function App() {
       console.log("tempDatefilters", tempDatefilters);
       setDatefilters(tempDatefilters);
     };
+
+  // console.log("datefilters", datefilters);
 
   // if encrypting password failed, then open the encrypt app before continuing
   useEffect(() => {
@@ -1863,8 +2026,9 @@ function App() {
       }
       // if readonly is true or 1, then we dont allow saving
       if ("readonly" in parsed) {
-        const tempAllowSave =
-          parsed.readonly === "1" || parsed.readonly === "true" ? false : true;
+        const tempAllowSave = !["Y", "y", "1", "true"].includes(
+          parsed.readonly
+        );
         console.log("tempAllowSave", tempAllowSave);
         setAllowSave(tempAllowSave);
       }
@@ -1893,7 +2057,7 @@ function App() {
     else setChecked(false);
   }, [isArray]);
 
-  console.log("buttons", buttons, "urls", urls, "cols", cols);
+  console.log("cols", cols);
 
   return (
     <div className="App">
@@ -1927,9 +2091,13 @@ function App() {
                 color: "black",
                 fontWeight: "bold",
                 boxShadow: 3,
-                fontSize: 14,
-                height: 23,
+                fontSize: 12,
+                // height: 23,
                 padding: 0.3,
+                whiteSpace: "normal",
+                lineHeight: "normal",
+                height: "unset !important",
+                maxHeight: "168px !important",
               }}
             >
               &nbsp;&nbsp;{title}&nbsp;&nbsp;
@@ -1948,7 +2116,7 @@ function App() {
             <span>
               <Button
                 variant="contained"
-                // disabled={!allowSave}
+                disabled={!allowSave}
                 sx={{ m: 1, ml: 2, fontSize: 10 }}
                 onClick={() => {
                   updateJsonFile(dataUrl, rows);
@@ -2041,43 +2209,47 @@ function App() {
               </Tooltip>
             );
           })}
-          <Tooltip title="View data from LSAF as a JSON file">
-            <span>
-              <Button
-                variant="contained"
-                color="info"
-                startIcon={<Visibility sx={{ fontSize: 10 }} />}
-                onClick={() => {
-                  window
-                    .open(`${fileViewerPrefix}${dataUrl}`, "_blank")
-                    .focus();
-                }}
-                size="small"
-                sx={{ m: 1, fontSize: 10 }}
-              >
-                Data
-              </Button>
-            </span>
-          </Tooltip>
-          <Tooltip title="View metadata from LSAF as a JSON file">
-            <span>
-              <Button
-                variant="contained"
-                disabled={showMeta ? false : true}
-                color="info"
-                startIcon={<Wysiwyg sx={{ fontSize: 10 }} />}
-                onClick={() => {
-                  window
-                    .open(`${fileViewerPrefix}${metaUrl}`, "_blank")
-                    .focus();
-                }}
-                size="small"
-                sx={{ m: 1, fontSize: 10 }}
-              >
-                Meta
-              </Button>
-            </span>
-          </Tooltip>
+          {hideDataButton ? null : (
+            <Tooltip title="View data from LSAF as a JSON file">
+              <span>
+                <Button
+                  variant="contained"
+                  color="info"
+                  startIcon={<Visibility sx={{ fontSize: 10 }} />}
+                  onClick={() => {
+                    window
+                      .open(`${fileViewerPrefix}${dataUrl}`, "_blank")
+                      .focus();
+                  }}
+                  size="small"
+                  sx={{ m: 1, fontSize: 10 }}
+                >
+                  Data
+                </Button>
+              </span>
+            </Tooltip>
+          )}
+          {hideDataButton ? null : (
+            <Tooltip title="View metadata from LSAF as a JSON file">
+              <span>
+                <Button
+                  variant="contained"
+                  disabled={showMeta ? false : true}
+                  color="info"
+                  startIcon={<Wysiwyg sx={{ fontSize: 10 }} />}
+                  onClick={() => {
+                    window
+                      .open(`${fileViewerPrefix}${metaUrl}`, "_blank")
+                      .focus();
+                  }}
+                  size="small"
+                  sx={{ m: 1, fontSize: 10 }}
+                >
+                  Meta
+                </Button>
+              </span>
+            </Tooltip>
+          )}
           {key && availableKeys.length > 1 && (
             <Tooltip title="Choose a key" placement="right">
               <Select
@@ -2149,16 +2321,36 @@ function App() {
             </Box>
           </Tooltip>
           <Box sx={{ flexGrow: 1 }}></Box>
+          <Tooltip title="Use SQL to query this data">
+            <IconButton
+              color="success"
+              // sx={{ mr: 2 }}
+              onClick={() => {
+                const keyText = key ? "&key=" + key : "";
+                window
+                  .open(
+                    "https://" +
+                      host +
+                      `/lsaf/filedownload/sdd%3A///general/biostat/apps/sql/index.html?path=${current}${keyText}`,
+                    "_blank"
+                  )
+                  .focus();
+              }}
+            >
+              <QuestionMarkRounded />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Pivot table & graph with this data">
             <IconButton
               color="success"
               // sx={{ mr: 2 }}
               onClick={() => {
+                const keyText = key ? "&key=" + key : "";
                 window
                   .open(
                     "https://" +
                       host +
-                      `/lsaf/filedownload/sdd%3A///general/biostat/apps/pivot/index.html?data=${current}`,
+                      `/lsaf/filedownload/sdd%3A///general/biostat/apps/pivot/index.html?data=${current}${keyText}`,
                     "_blank"
                   )
                   .focus();
@@ -2221,6 +2413,18 @@ function App() {
                 fontSize: { fontSize },
                 padding: 1,
                 mt: 6,
+                "& .MuiDataGrid-columnHeaderTitle": {
+                  whiteSpace: "normal",
+                  lineHeight: "normal",
+                },
+                "& .MuiDataGrid-columnHeader": {
+                  // Forced to use important since overriding inline styles
+                  height: "unset !important",
+                },
+                "& .MuiDataGrid-columnHeaders": {
+                  // Forced to use important since overriding inline styles
+                  maxHeight: "168px !important",
+                },
               }}
               getRowClassName={(params) => {
                 if (disableRowKey)
@@ -2338,6 +2542,17 @@ function App() {
         </DialogContent>
       </Dialog>
 
+      {/* Dialog to block usage of the screen if user is not allowed to use it */}
+      {validUserids && (
+        <Dialog
+          fullWidth
+          maxWidth="xl"
+          // onClose={() => setOpenInfo(false)}
+          open={validUserids.includes(username)}
+        >
+          You can't use this screen.
+        </Dialog>
+      )}
       {/* Dialog with General info about this screen */}
       <Dialog
         fullWidth
@@ -2422,13 +2637,16 @@ function App() {
               information about the data in this view
             </li>
             <li>
+              <b>title</b> - text to display as a title in the tab and toolbar
+            </li>
+            <li>
               <b>key</b> - the key of the JSON file to load
             </li>
             <li>
-              <b>filter</b> - specifies some text to use in the quick filter
+              <b>readonly</b> - Y or 1 or true means that file can't be saved
             </li>
             <li>
-              <b>readonly</b> - Y means that file can't be saved
+              <b>filter</b> - specifies some text to use in the quick filter
             </li>
           </ul>
           <b>Sample uses</b>
