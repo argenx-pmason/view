@@ -112,6 +112,8 @@ function App() {
     params = new URLSearchParams(document.location.search),
     rLinks = `${webDavPrefix}/general/biostat/apps/control/links.json`,
     [links, setLinks] = useState(null),
+    [restricted, setRestricted] = useState(null),
+    [allowed, setAllowed] = useState(true),
     handleClickMenu = (event) => {
       setAnchorEl(event.currentTarget);
     },
@@ -167,6 +169,10 @@ function App() {
     [rowReordering, setRowReordering] = useState(false),
     [hideDataButton, setHideDataButton] = useState(false),
     [hideMetaButton, setHideMetaButton] = useState(false),
+    [hideSaveButton, setHideSaveButton] = useState(false),
+    [hideAddButton, setHideAddButton] = useState(false),
+    [hideDelButton, setHideDelButton] = useState(false),
+    [hideDupButton, setHideDupButton] = useState(false),
     [validUserids, setValidUserids] = useState(null),
     [urls, setUrls] = useState([]),
     handleLink = (id) => {
@@ -408,6 +414,15 @@ function App() {
                             operator: operator,
                             value: compareValue,
                             id: id,
+                          },
+                          {
+                            field: df,
+                            operator: operator === "after" ? "before" : "after",
+                            value:
+                              operator === "after"
+                                ? "2030-01-01"
+                                : "2024-01-01",
+                            id: id + 1,
                           },
                         ];
 
@@ -800,10 +815,26 @@ function App() {
     getData = async (d, m, i, k) => {
       console.log("getData", "d", d, "m", m, "i", i, "k", k);
       const dUrl = `${fileDownloadPrefix}${d}`,
+        dUrl2 = `${webDavPrefix}${d}`,
         mUrl = `${fileDownloadPrefix}${m}`,
         iUrl = `${fileDownloadPrefix}${i}`,
+        r = d.slice(0, -5) + "_restricted.json",
+        rUrl = `${fileDownloadPrefix}${r}`, // array of usernames allowed to access this data
         tempDatefilters = {};
-      console.log("dUrl", dUrl, "mUrl", mUrl, "iUrl", iUrl);
+      console.log(
+        "dUrl",
+        dUrl,
+        "dUrl2",
+        dUrl2,
+        "mUrl",
+        mUrl,
+        "iUrl",
+        iUrl,
+        "r",
+        r,
+        "rUrl",
+        rUrl
+      );
       let metaData = {};
       if (m) {
         const res = await fetch(mUrl);
@@ -814,10 +845,31 @@ function App() {
         const res = await fetch(iUrl);
         info = await res.json();
       }
+      if (r) {
+        fetch(rUrl)
+          .then((response) => response.json())
+          .then((_restricted) => {
+            console.log("_restricted", _restricted);
+            setRestricted(_restricted);
+            if (_restricted.includes(username)) setAllowed(true);
+            else setAllowed(false);
+          })
+          .catch((err) => {
+            console.log("error - rUrl=", rUrl, "err=", err);
+            setRestricted(null);
+            setAllowed(true);
+          });
+      }
+      // dUrl2 is used so we can use the headers to get the last modified date, which are only available with webDav
+      fetch(dUrl2, { method: "HEAD" }).then((res) => {
+        console.log("res", res, "res.headers", res.headers);
+        const lastModified = res.headers.get("Last-Modified");
+        setLastModified(lastModified);
+      });
       fetch(dUrl)
         .then((res) => {
-          const lastModified = res.headers.get("Last-Modified");
-          setLastModified(lastModified);
+          // const lastModified = res.headers.get("Last-Modified");
+          // setLastModified(lastModified);
           // if the file was a CSV file, then we can use papaparse to parse the CSV into JSON
           if (d.endsWith(".csv")) {
             return res.text();
@@ -892,6 +944,10 @@ function App() {
         if (k === "#viewonly") setAllowSave(false);
         if (k === "#hideDataButton") setHideDataButton(true);
         if (k === "#hideMetaButton") setHideMetaButton(true);
+        if (k === "#hideSaveButton") setHideSaveButton(true);
+        if (k === "#hideAddButton") setHideAddButton(true);
+        if (k === "#hideDelButton") setHideDelButton(true);
+        if (k === "#hideDupButton") setHideDupButton(true);
         if (k === "#validUsers") setValidUserids(metaData[k]);
         if (k.startsWith("#button")) {
           const button = metaData[k];
@@ -1060,7 +1116,7 @@ function App() {
               if (["string", "number"].includes(typeof actualValue)) {
                 const value2 = new Date(actualValue);
                 valueDate = new Date(value2.setHours(value2.setHours(12)));
-                console.log("@@@", value2, valueDate);
+                // console.log("@@@", value2, valueDate);
                 if (valueDate.toString() === "Invalid Date") {
                   return value;
                 }
@@ -1101,7 +1157,7 @@ function App() {
                 formattedValue === "Thu, 1 Jan 1970"
               )
                 formattedValue = null;
-              console.log("formattedValue", formattedValue);
+              // console.log("formattedValue", formattedValue);
               return formattedValue;
             };
           }
@@ -1137,24 +1193,18 @@ function App() {
                     ? link.replace("{{linkvar}}", row[linkvar])
                     : params.value > " " && link
                     ? params.value
-                    : null;
-              // console.log(
-              //   "url",
-              //   url,
-              //   "params.value",
-              //   params.value,
-              //   "link",
-              //   link,
-              //   "linkvar",
-              //   linkvar
-              // );
+                    : null,
+                fore = colorNonEmpty || "black",
+                back = backgroundColorNonEmpty || "white";
               if (typeof url === "string" && url.startsWith("http")) {
                 return (
-                  <Tooltip title={tt}>
-                    <Link href={url} target="_blank" rel="noreferrer">
-                      {short || params.value}
-                    </Link>
-                  </Tooltip>
+                  <Box sx={{ backgroundColor: back, color: fore, flexGrow: 1 }}>
+                    <Tooltip title={tt}>
+                      <Link href={url} target="_blank" rel="noreferrer">
+                        {short || params.value}
+                      </Link>
+                    </Tooltip>
+                  </Box>
                 );
               } else return "n/a";
             };
@@ -1344,13 +1394,6 @@ function App() {
             };
           } else if (backgroundColorNonEmpty || colorNonEmpty) {
             renderCell = (params) => {
-              // console.log(
-              //   params,
-              //   "backgroundColorNonEmpty",
-              //   backgroundColorNonEmpty,
-              //   "colorNonEmpty",
-              //   colorNonEmpty
-              // );
               const fore = colorNonEmpty || "black",
                 back = backgroundColorNonEmpty || "white";
               return (
@@ -1487,6 +1530,10 @@ function App() {
         if (k === "#viewonly") setAllowSave(false);
         if (k === "#hideDataButton") setHideDataButton(true);
         if (k === "#hideMetaButton") setHideMetaButton(true);
+        if (k === "#hideSaveButton") setHideSaveButton(true);
+        if (k === "#hideAddButton") setHideAddButton(true);
+        if (k === "#hideDelButton") setHideDelButton(true);
+        if (k === "#hideDupButton") setHideDupButton(true);
         if (k === "#validUsers") setValidUserids(localMeta[k]);
         if (k.startsWith("#button")) {
           const button = localMeta[k];
@@ -1646,12 +1693,16 @@ function App() {
                     ? link.replace("{{linkvar}}", row[linkvar])
                     : params.value > " " && link
                     ? link
-                    : params.value;
+                    : params.value,
+                fore = colorNonEmpty || "black",
+                back = backgroundColorNonEmpty || "white";
               if (url.startsWith("http")) {
                 return (
-                  <Link href={url} target="_blank" rel="noreferrer">
-                    {short || params.value}
-                  </Link>
+                  <Box sx={{ backgroundColor: back, color: fore, flexGrow: 1 }}>
+                    <Link href={url} target="_blank" rel="noreferrer">
+                      {short || params.value}
+                    </Link>
+                  </Box>
                 );
               } else return "n/a";
             };
@@ -2057,639 +2108,676 @@ function App() {
     else setChecked(false);
   }, [isArray]);
 
-  console.log("cols", cols);
+  // console.log(
+  //   "cols",
+  //   cols,
+  //   "allowed",
+  //   allowed,
+  //   "restricted",
+  //   restricted,
+  //   "username",
+  //   username
+  // );
 
   return (
-    <div className="App">
-      <AppBar position="fixed">
-        <Toolbar variant="dense" sx={{ backgroundColor: "#f7f7f7" }}>
-          <Tooltip title="Menu">
-            <IconButton
-              edge="start"
-              color="info"
-              sx={{ mr: 2 }}
-              onClick={handleClickMenu}
-              aria-label="menu"
-              aria-controls={Boolean(anchorEl) ? "View a table" : undefined}
-              aria-haspopup="true"
-              aria-expanded={Boolean(anchorEl) ? "true" : undefined}
-            >
-              <MenuIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip
-            title={
-              username && username.length > 1
-                ? `Logged in as ${username}`
-                : "Not logged in"
-            }
-          >
-            <Box
-              sx={{
-                border: 1,
-                borderRadius: 2,
-                color: "black",
-                fontWeight: "bold",
-                boxShadow: 3,
-                fontSize: 12,
-                // height: 23,
-                padding: 0.3,
-                whiteSpace: "normal",
-                lineHeight: "normal",
-                height: "unset !important",
-                maxHeight: "168px !important",
-              }}
-            >
-              &nbsp;&nbsp;{title}&nbsp;&nbsp;
-            </Box>
-          </Tooltip>
-          <Tooltip title="Switch between editor and JSON views">
-            <Switch
-              checked={checked}
-              onChange={() => {
-                setChecked(!checked);
-              }}
-              inputProps={{ "aria-label": "controlled" }}
-            />
-          </Tooltip>
-          <Tooltip title="Save JSON back to server">
-            <span>
-              <Button
-                variant="contained"
-                disabled={!allowSave}
-                sx={{ m: 1, ml: 2, fontSize: 10 }}
-                onClick={() => {
-                  updateJsonFile(dataUrl, rows);
-                }}
-                size="small"
-                color="success"
-                startIcon={<Save sx={{ fontSize: 10 }} />}
-              >
-                Save
-              </Button>
-            </span>
-          </Tooltip>
-          <Tooltip title="Add a record to the bottom of table">
-            <Button
-              variant="contained"
-              disabled={!allowSave}
-              color="info"
-              startIcon={<Add sx={{ fontSize: 10 }} />}
-              onClick={addRecord}
-              size="small"
-              sx={{ m: 1, fontSize: 10 }}
-            >
-              Add
-            </Button>
-          </Tooltip>
-          <Tooltip title="Delete the selected row or rows from table">
-            {" "}
-            <Button
-              variant="contained"
-              disabled={!allowSave}
-              color="info"
-              startIcon={<Delete sx={{ fontSize: 10 }} />}
-              onClick={deleteRecord}
-              size="small"
-              sx={{ m: 1, fontSize: 10 }}
-            >
-              Del
-            </Button>
-          </Tooltip>
-          <Tooltip title="Duplicate the currently selected row or rows and put them at the bottom of the table">
-            <Button
-              variant="contained"
-              disabled={!allowSave}
-              color="info"
-              startIcon={<FileCopy sx={{ fontSize: 10 }} />}
-              onClick={duplicateRecord}
-              size="small"
-              sx={{ m: 1, fontSize: 10 }}
-            >
-              Dup
-            </Button>
-          </Tooltip>
-          {buttons.map((b, i) => {
-            return (
-              <Tooltip title={b.tooltip} key={"butt" + i}>
-                <Button
-                  variant="contained"
-                  size="small"
-                  color="warning"
-                  sx={{
-                    mr: 1,
-                    fontSize: 10,
-                    padding: "2px 5px",
-                    minWidth: "10px",
-                  }}
-                  onClick={() => handleButton(b.id)}
-                >
-                  {b.label}
-                </Button>
-              </Tooltip>
-            );
-          })}
-          {urls.map((l, i) => {
-            return (
-              <Tooltip title={l.tooltip} key={"link" + i}>
-                <Button
-                  variant="contained"
-                  size="small"
-                  color="secondary"
-                  sx={{
-                    mr: 1,
-                    fontSize: 10,
-                    padding: "2px 5px",
-                    minWidth: "10px",
-                  }}
-                  onClick={() => handleLink(l.id)}
-                >
-                  {l.label}
-                </Button>
-              </Tooltip>
-            );
-          })}
-          {hideDataButton ? null : (
-            <Tooltip title="View data from LSAF as a JSON file">
-              <span>
-                <Button
-                  variant="contained"
+    <>
+      {allowed ? (
+        <div className="App">
+          <AppBar position="fixed">
+            <Toolbar variant="dense" sx={{ backgroundColor: "#f7f7f7" }}>
+              <Tooltip title="Menu">
+                <IconButton
+                  edge="start"
                   color="info"
-                  startIcon={<Visibility sx={{ fontSize: 10 }} />}
-                  onClick={() => {
-                    window
-                      .open(`${fileViewerPrefix}${dataUrl}`, "_blank")
-                      .focus();
-                  }}
-                  size="small"
-                  sx={{ m: 1, fontSize: 10 }}
+                  sx={{ mr: 2 }}
+                  onClick={handleClickMenu}
+                  aria-label="menu"
+                  aria-controls={Boolean(anchorEl) ? "View a table" : undefined}
+                  aria-haspopup="true"
+                  aria-expanded={Boolean(anchorEl) ? "true" : undefined}
                 >
-                  Data
-                </Button>
-              </span>
-            </Tooltip>
-          )}
-          {hideDataButton ? null : (
-            <Tooltip title="View metadata from LSAF as a JSON file">
-              <span>
-                <Button
-                  variant="contained"
-                  disabled={showMeta ? false : true}
-                  color="info"
-                  startIcon={<Wysiwyg sx={{ fontSize: 10 }} />}
-                  onClick={() => {
-                    window
-                      .open(`${fileViewerPrefix}${metaUrl}`, "_blank")
-                      .focus();
-                  }}
-                  size="small"
-                  sx={{ m: 1, fontSize: 10 }}
-                >
-                  Meta
-                </Button>
-              </span>
-            </Tooltip>
-          )}
-          {key && availableKeys.length > 1 && (
-            <Tooltip title="Choose a key" placement="right">
-              <Select
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
-                label="Key"
+                  <MenuIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip
+                title={
+                  username && username.length > 1
+                    ? `Logged in as ${username}`
+                    : "Not logged in"
+                }
               >
-                {availableKeys.map((k) => (
-                  <MenuItem key={k} value={k}>
-                    {k}
-                  </MenuItem>
-                ))}
-              </Select>
-            </Tooltip>
-          )}
-          <Tooltip title="Smaller font">
-            <IconButton
-              color="primary"
-              size="small"
-              onClick={() => {
-                setFontSize(fontSize - 1);
-                localStorage.setItem("fontSize", fontSize - 1);
-              }}
-            >
-              <Remove />
-            </IconButton>
-          </Tooltip>
-          <Box sx={{ color: "#0288d1" }}>&nbsp;{fontSize}&nbsp;</Box>
-          <Tooltip title="Larger font">
-            <IconButton
-              color="primary"
-              size="small"
-              onClick={() => {
-                setFontSize(fontSize + 1);
-                localStorage.setItem("fontSize", fontSize + 1);
-              }}
-            >
-              <Add />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title={lastModified || "Data comes from this file"}>
-            <Box
-              sx={{
-                color: "#0288d1",
-                backgroundColor: "#cdcdcd",
-                fontWeight: "bold",
-                // fontSize: "0.8em",
-                textAlign: "left",
-                border: 1,
-                borderRadius: 2,
-                // color: "black",
-                boxShadow: 3,
-                fontSize: 14,
-                height: 23,
-                padding: 0.3,
-              }}
-            >
-              &nbsp;
-              {current ? (
-                <span>
-                  {current} {key ? ` with key: ${key}` : ""}
-                </span>
-              ) : mode === "local" ? (
-                "Running locally"
-              ) : (
-                ""
-              )}
-              &nbsp;
-            </Box>
-          </Tooltip>
-          <Box sx={{ flexGrow: 1 }}></Box>
-          <Tooltip title="Use SQL to query this data">
-            <IconButton
-              color="success"
-              // sx={{ mr: 2 }}
-              onClick={() => {
-                const keyText = key ? "&key=" + key : "";
-                window
-                  .open(
-                    "https://" +
-                      host +
-                      `/lsaf/filedownload/sdd%3A///general/biostat/apps/sql/index.html?path=${current}${keyText}`,
-                    "_blank"
-                  )
-                  .focus();
-              }}
-            >
-              <QuestionMarkRounded />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Pivot table & graph with this data">
-            <IconButton
-              color="success"
-              // sx={{ mr: 2 }}
-              onClick={() => {
-                const keyText = key ? "&key=" + key : "";
-                window
-                  .open(
-                    "https://" +
-                      host +
-                      `/lsaf/filedownload/sdd%3A///general/biostat/apps/pivot/index.html?data=${current}${keyText}`,
-                    "_blank"
-                  )
-                  .focus();
-              }}
-            >
-              <Insights />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Load a different version">
-            <IconButton
-              color="info"
-              // sx={{ mr: 2 }}
-              onClick={() => {
-                setShowVersions(true);
-              }}
-            >
-              <CloudDownload />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Information about this screen">
-            <IconButton
-              color="info"
-              // sx={{ mr: 2 }}
-              onClick={() => {
-                setOpenInfo(true);
-              }}
-            >
-              <Info />
-            </IconButton>
-          </Tooltip>
-        </Toolbar>
-      </AppBar>
-      <Grid container spacing={2}>
-        <Grid item xs={12}>
-          {!checked ? (
-            // <Box onContextMenu={handleContextMenu}>
-            <DataGridPro
-              columns={cols}
-              rows={rows}
-              rowReordering={rowReordering}
-              // rowHeight={22}
-              getRowHeight={() => "auto"}
-              density="compact"
-              // getRowId={(row) => row.__id__}
-              // autoHeight
-              pageSizeOptions={[25, 100, 1000, 10000]}
-              pagination
-              editMode="row"
-              slots={{ columnMenu: CustomColumnMenu, toolbar: CustomToolbar }}
-              slotProps={{
-                row: {
-                  onContextMenu: (e) => handleContextMenu(e),
-                  style: { cursor: "context-menu" },
-                },
-              }}
-              sx={{
-                // width: window.innerWidth,
-                height: window.innerHeight - 50,
-                fontWeight: `fontSize=5`,
-                fontSize: { fontSize },
-                padding: 1,
-                mt: 6,
-                "& .MuiDataGrid-columnHeaderTitle": {
-                  whiteSpace: "normal",
-                  lineHeight: "normal",
-                },
-                "& .MuiDataGrid-columnHeader": {
-                  // Forced to use important since overriding inline styles
-                  height: "unset !important",
-                },
-                "& .MuiDataGrid-columnHeaders": {
-                  // Forced to use important since overriding inline styles
-                  maxHeight: "168px !important",
-                },
-              }}
-              getRowClassName={(params) => {
-                if (disableRowKey)
-                  return params.row[disableRowKey] ? "gray" : "black";
-                else return "black";
-              }}
-              onCellEditStart={handleCellEditStart}
-              onCellEditStop={handleCellEditStop}
-              processRowUpdate={processRowUpdate}
-              apiRef={apiRef}
-              pinnedColumns={pinnedColumns}
-              onPinnedColumnsChange={handlePinnedColumnsChange}
-              initialState={{
-                columns: {
-                  columnVisibilityModel: hiddenColumnsObject,
-                },
-                filter: {
-                  filterModel: {
-                    items: [],
-                    quickFilterValues: quickFilterValues,
-                  },
-                },
-                sorting: { sortModel: sortModel },
-              }}
-            />
-          ) : (
-            // </Box>
-            <Box sx={{ mt: 8 }}>
-              <pre>
-                {mode === "local"
-                  ? JSON.stringify(localData, null, "\t")
-                  : mode === "remote"
-                  ? JSON.stringify(originalData, null, "\t")
-                  : "No text to display."}
-              </pre>
-            </Box>
-          )}
-        </Grid>
-      </Grid>
-
-      <Menu
-        open={contextMenu !== null}
-        onClose={handleClose}
-        anchorReference="anchorPosition"
-        anchorPosition={
-          contextMenu !== null
-            ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
-            : undefined
-        }
-      >
-        <MenuItem onClick={handleSet}>Set</MenuItem>
-        <MenuItem onClick={handleAdd}>Add</MenuItem>
-        <MenuItem onClick={handleClear}>Clear</MenuItem>
-        {/* <MenuItem onClick={handleSave}>Save</MenuItem>
-        <MenuItem onClick={handleLoad}>Load</MenuItem> */}
-      </Menu>
-
-      <Snackbar
-        open={openSnackbar}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        message={message}
-      />
-
-      <Menu
-        anchorEl={anchorEl}
-        id="link-menu"
-        open={Boolean(anchorEl)}
-        onClose={handleCloseMenu}
-        onClick={handleCloseMenu}
-        transformOrigin={{ horizontal: "right", vertical: "top" }}
-        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-      >
-        {links &&
-          links.map((t, id) => (
-            <MenuItem key={"menuItem" + id} onClick={handleCloseMenu}>
-              <Tooltip key={"tt" + id}>
                 <Box
-                  color={"success"}
-                  size="small"
-                  variant="outlined"
-                  onClick={() => {
-                    window.open(t.url, "_blank").focus();
+                  sx={{
+                    border: 1,
+                    borderRadius: 2,
+                    color: "black",
+                    fontWeight: "bold",
+                    boxShadow: 3,
+                    fontSize: 12,
+                    // height: 23,
+                    padding: 0.3,
+                    whiteSpace: "normal",
+                    lineHeight: "normal",
+                    height: "unset !important",
+                    maxHeight: "168px !important",
                   }}
-                  // sx={{ mb: 1 }}
                 >
-                  {t.name}
+                  &nbsp;&nbsp;{title}&nbsp;&nbsp;
                 </Box>
               </Tooltip>
-            </MenuItem>
-          ))}
-      </Menu>
+              <Tooltip title="Switch between editor and JSON views">
+                <Switch
+                  checked={checked}
+                  onChange={() => {
+                    setChecked(!checked);
+                  }}
+                  inputProps={{ "aria-label": "controlled" }}
+                />
+              </Tooltip>
+              {hideSaveButton ? null : (
+                <Tooltip title="Save JSON back to server">
+                  <span>
+                    <Button
+                      variant="contained"
+                      disabled={!allowSave}
+                      sx={{ m: 1, ml: 2, fontSize: 10 }}
+                      onClick={() => {
+                        updateJsonFile(dataUrl, rows);
+                      }}
+                      size="small"
+                      color="success"
+                      startIcon={<Save sx={{ fontSize: 10 }} />}
+                    >
+                      Save
+                    </Button>
+                  </span>
+                </Tooltip>
+              )}
+              {hideAddButton ? null : (
+                <Tooltip title="Add a record to the bottom of table">
+                  <Button
+                    variant="contained"
+                    disabled={!allowSave}
+                    color="info"
+                    startIcon={<Add sx={{ fontSize: 10 }} />}
+                    onClick={addRecord}
+                    size="small"
+                    sx={{ m: 1, fontSize: 10 }}
+                  >
+                    Add
+                  </Button>
+                </Tooltip>
+              )}
+              {hideDelButton ? null : (
+                <Tooltip title="Delete the selected row or rows from table">
+                  {" "}
+                  <Button
+                    variant="contained"
+                    disabled={!allowSave}
+                    color="info"
+                    startIcon={<Delete sx={{ fontSize: 10 }} />}
+                    onClick={deleteRecord}
+                    size="small"
+                    sx={{ m: 1, fontSize: 10 }}
+                  >
+                    Del
+                  </Button>
+                </Tooltip>
+              )}
+              {hideDupButton ? null : (
+                <Tooltip title="Duplicate the currently selected row or rows and put them at the bottom of the table">
+                  <Button
+                    variant="contained"
+                    disabled={!allowSave}
+                    color="info"
+                    startIcon={<FileCopy sx={{ fontSize: 10 }} />}
+                    onClick={duplicateRecord}
+                    size="small"
+                    sx={{ m: 1, fontSize: 10 }}
+                  >
+                    Dup
+                  </Button>
+                </Tooltip>
+              )}
+              {buttons.map((b, i) => {
+                return (
+                  <Tooltip title={b.tooltip} key={"butt" + i}>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      color="warning"
+                      sx={{
+                        mr: 1,
+                        fontSize: 10,
+                        padding: "2px 5px",
+                        minWidth: "10px",
+                      }}
+                      onClick={() => handleButton(b.id)}
+                    >
+                      {b.label}
+                    </Button>
+                  </Tooltip>
+                );
+              })}
+              {urls.map((l, i) => {
+                return (
+                  <Tooltip title={l.tooltip} key={"link" + i}>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      color="secondary"
+                      sx={{
+                        mr: 1,
+                        fontSize: 10,
+                        padding: "2px 5px",
+                        minWidth: "10px",
+                      }}
+                      onClick={() => handleLink(l.id)}
+                    >
+                      {l.label}
+                    </Button>
+                  </Tooltip>
+                );
+              })}
+              {hideDataButton ? null : (
+                <Tooltip title="View data from LSAF as a JSON file">
+                  <span>
+                    <Button
+                      variant="contained"
+                      color="info"
+                      startIcon={<Visibility sx={{ fontSize: 10 }} />}
+                      onClick={() => {
+                        window
+                          .open(`${fileViewerPrefix}${dataUrl}`, "_blank")
+                          .focus();
+                      }}
+                      size="small"
+                      sx={{ m: 1, fontSize: 10 }}
+                    >
+                      Data
+                    </Button>
+                  </span>
+                </Tooltip>
+              )}
+              {hideMetaButton ? null : (
+                <Tooltip title="View metadata from LSAF as a JSON file">
+                  <span>
+                    <Button
+                      variant="contained"
+                      disabled={showMeta ? false : true}
+                      color="info"
+                      startIcon={<Wysiwyg sx={{ fontSize: 10 }} />}
+                      onClick={() => {
+                        window
+                          .open(`${fileViewerPrefix}${metaUrl}`, "_blank")
+                          .focus();
+                      }}
+                      size="small"
+                      sx={{ m: 1, fontSize: 10 }}
+                    >
+                      Meta
+                    </Button>
+                  </span>
+                </Tooltip>
+              )}
+              {key && availableKeys.length > 1 && (
+                <Tooltip title="Choose a key" placement="right">
+                  <Select
+                    value={key}
+                    onChange={(e) => setKey(e.target.value)}
+                    label="Key"
+                  >
+                    {availableKeys.map((k) => (
+                      <MenuItem key={k} value={k}>
+                        {k}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </Tooltip>
+              )}
+              <Tooltip title="Smaller font">
+                <IconButton
+                  color="primary"
+                  size="small"
+                  onClick={() => {
+                    setFontSize(fontSize - 1);
+                    localStorage.setItem("fontSize", fontSize - 1);
+                  }}
+                >
+                  <Remove />
+                </IconButton>
+              </Tooltip>
+              <Box sx={{ color: "#0288d1" }}>&nbsp;{fontSize}&nbsp;</Box>
+              <Tooltip title="Larger font">
+                <IconButton
+                  color="primary"
+                  size="small"
+                  onClick={() => {
+                    setFontSize(fontSize + 1);
+                    localStorage.setItem("fontSize", fontSize + 1);
+                  }}
+                >
+                  <Add />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title={lastModified || "Data comes from this file"}>
+                <Box
+                  sx={{
+                    color: "#0288d1",
+                    backgroundColor: "#cdcdcd",
+                    fontWeight: "bold",
+                    // fontSize: "0.8em",
+                    textAlign: "left",
+                    border: 1,
+                    borderRadius: 2,
+                    // color: "black",
+                    boxShadow: 3,
+                    fontSize: 14,
+                    height: 23,
+                    padding: 0.3,
+                  }}
+                >
+                  &nbsp;
+                  {current ? (
+                    <span>
+                      {current} {key ? ` with key: ${key}` : ""}
+                    </span>
+                  ) : mode === "local" ? (
+                    "Running locally"
+                  ) : (
+                    ""
+                  )}
+                  &nbsp;
+                </Box>
+              </Tooltip>
+              <Box sx={{ flexGrow: 1 }}></Box>
+              <Tooltip title="Use SQL to query this data">
+                <IconButton
+                  color="success"
+                  // sx={{ mr: 2 }}
+                  onClick={() => {
+                    const keyText = key ? "&key=" + key : "";
+                    window
+                      .open(
+                        "https://" +
+                          host +
+                          `/lsaf/filedownload/sdd%3A///general/biostat/apps/sql/index.html?path=${current}${keyText}`,
+                        "_blank"
+                      )
+                      .focus();
+                  }}
+                >
+                  <QuestionMarkRounded />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Pivot table & graph with this data">
+                <IconButton
+                  color="success"
+                  // sx={{ mr: 2 }}
+                  onClick={() => {
+                    const keyText = key ? "&key=" + key : "";
+                    window
+                      .open(
+                        "https://" +
+                          host +
+                          `/lsaf/filedownload/sdd%3A///general/biostat/apps/pivot/index.html?data=${current}${keyText}`,
+                        "_blank"
+                      )
+                      .focus();
+                  }}
+                >
+                  <Insights />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Load a different version">
+                <IconButton
+                  color="info"
+                  // sx={{ mr: 2 }}
+                  onClick={() => {
+                    setShowVersions(true);
+                  }}
+                >
+                  <CloudDownload />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Information about this screen">
+                <IconButton
+                  color="info"
+                  // sx={{ mr: 2 }}
+                  onClick={() => {
+                    setOpenInfo(true);
+                  }}
+                >
+                  <Info />
+                </IconButton>
+              </Tooltip>
+            </Toolbar>
+          </AppBar>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              {!checked ? (
+                // <Box onContextMenu={handleContextMenu}>
+                <DataGridPro
+                  columns={cols}
+                  rows={rows}
+                  rowReordering={rowReordering}
+                  // rowHeight={22}
+                  getRowHeight={() => "auto"}
+                  density="compact"
+                  // getRowId={(row) => row.__id__}
+                  // autoHeight
+                  pageSizeOptions={[25, 100, 1000, 10000]}
+                  pagination
+                  editMode="row"
+                  slots={{
+                    columnMenu: CustomColumnMenu,
+                    toolbar: CustomToolbar,
+                  }}
+                  slotProps={{
+                    row: {
+                      onContextMenu: (e) => handleContextMenu(e),
+                      style: { cursor: "context-menu" },
+                    },
+                  }}
+                  sx={{
+                    // width: window.innerWidth,
+                    height: window.innerHeight - 50,
+                    fontWeight: `fontSize=5`,
+                    fontSize: { fontSize },
+                    padding: 1,
+                    mt: 6,
+                    "& .MuiDataGrid-columnHeaderTitle": {
+                      whiteSpace: "normal",
+                      lineHeight: "normal",
+                    },
+                    "& .MuiDataGrid-columnHeader": {
+                      // Forced to use important since overriding inline styles
+                      height: "unset !important",
+                    },
+                    "& .MuiDataGrid-columnHeaders": {
+                      // Forced to use important since overriding inline styles
+                      maxHeight: "168px !important",
+                    },
+                  }}
+                  getRowClassName={(params) => {
+                    if (disableRowKey)
+                      return params.row[disableRowKey] ? "gray" : "black";
+                    else return "black";
+                  }}
+                  onCellEditStart={handleCellEditStart}
+                  onCellEditStop={handleCellEditStop}
+                  processRowUpdate={processRowUpdate}
+                  apiRef={apiRef}
+                  pinnedColumns={pinnedColumns}
+                  onPinnedColumnsChange={handlePinnedColumnsChange}
+                  initialState={{
+                    columns: {
+                      columnVisibilityModel: hiddenColumnsObject,
+                    },
+                    filter: {
+                      filterModel: {
+                        items: [],
+                        quickFilterValues: quickFilterValues,
+                      },
+                    },
+                    sorting: { sortModel: sortModel },
+                  }}
+                />
+              ) : (
+                // </Box>
+                <Box sx={{ mt: 8 }}>
+                  <pre>
+                    {mode === "local"
+                      ? JSON.stringify(localData, null, "\t")
+                      : mode === "remote"
+                      ? JSON.stringify(originalData, null, "\t")
+                      : "No text to display."}
+                  </pre>
+                </Box>
+              )}
+            </Grid>
+          </Grid>
 
-      {/* Dialog with General info about this screen */}
-      <Dialog
-        fullWidth
-        maxWidth="xl"
-        onClose={() => setShowVersions(false)}
-        open={showVersions}
-      >
-        <DialogTitle>Load a version</DialogTitle>
-        <DialogContent>
-          {versions &&
-            versions.map((b, i) => (
-              <Chip
-                sx={{
-                  m: 0.5,
-                  backgroundColor: i % 2 === 0 ? "lightblue" : "lightgreen",
-                }}
-                key={"chip" + i}
-                label={b}
-                onClick={() => loadVersion(b)}
-              />
-            ))}
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog to block usage of the screen if user is not allowed to use it */}
-      {validUserids && (
-        <Dialog
-          fullWidth
-          maxWidth="xl"
-          // onClose={() => setOpenInfo(false)}
-          open={validUserids.includes(username)}
-        >
-          You can't use this screen.
-        </Dialog>
-      )}
-      {/* Dialog with General info about this screen */}
-      <Dialog
-        fullWidth
-        maxWidth="xl"
-        onClose={() => setOpenInfo(false)}
-        open={openInfo}
-      >
-        <DialogTitle>
-          Info about this screen{" "}
-          <Link
-            variant="inherit"
-            sx={{ display: "flex", justifyContent: "right" }}
-            href={
-              "https://argenxbvba.sharepoint.com/:w:/r/sites/Biostatistics/_layouts/15/Doc.aspx?sourcedoc=%7BB2358A9E-83A1-47DE-91FB-FD5C3C2CA62D%7D&file=View%20(web%20app).docx&action=default&mobileredirect=true"
+          <Menu
+            open={contextMenu !== null}
+            onClose={handleClose}
+            anchorReference="anchorPosition"
+            anchorPosition={
+              contextMenu !== null
+                ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                : undefined
             }
-            target="_blank"
-            rel="noopener"
           >
-            Open User Guide
-          </Link>
-        </DialogTitle>
-        <DialogContent>
-          {infoHtml && <div dangerouslySetInnerHTML={{ __html: infoHtml }} />}
-          <h1>General Info</h1>
-          <Box sx={{ color: "blue", fontSize: 11 }}>
-            This tools works with JSON data that is arranged as an array of
-            objects. That is the kind of JSON you get when using PROC JSON to
-            export data from SAS. The metadata file is optional, but if it is
-            provided, it can be used to define the columns in the table. The
-            metadata file should be a JSON file with the same keys as the data
-            file, and each key should have a label, type, and width. The type
-            can be string, number, date, dateTime, or boolean. The width is
-            optional, and is used to set the width of the column in the table.
-            The data file can be keyed, in which case the key parameter should
-            be provided in the URL. The key parameter is the key of the table to
-            display. The data file can be viewed in a separate window by
-            clicking the "Data" button. The metadata file can be viewed in a
-            separate window by clicking the "Meta" button. The data can be saved
-            back to the server by clicking the "Save" button. The data can be
-            added to by clicking the "Add" button. The data can be deleted by
-            clicking the "Delete" button.
-          </Box>
-          <ul>
-            <li>
-              <b>Double click</b> on a cell to edit that row.
-            </li>
-            <li>
-              Press <b>enter</b> to finish editing the row.
-            </li>
-            <li>
-              Press <b>escape</b> or click away to cancel editing the row.
-            </li>
-            <li>
-              Click on the column header and then the <b>3 vertical dots</b> to
-              sort the column.
-            </li>
-            <li>
-              Click on the <b>SAVE</b> button to write the JSON file back to the
-              location it was loaded from.
-            </li>
-            <li>
-              Pressing <b>SAVE</b> will first delete the file that was there
-              (using HTTP DELETE), and then does an writes the file to server
-              (using HTTP PUT).
-            </li>
-            <li>
-              Each time you save, it makes a backup of the data in your
-              browsers's local storage. So if disaster happens, you can get a
-              previous version of the data.
-            </li>
-          </ul>
-          <b>URL parameters</b>
-          <ul>
-            <li>
-              <b>lsaf</b> - the location of the JSON file to load
-            </li>
-            <li>
-              <b>meta</b> - the location of the metadata file to load
-            </li>
-            <li>
-              <b>info</b> - location of JSON file with HTML to use containing
-              information about the data in this view
-            </li>
-            <li>
-              <b>title</b> - text to display as a title in the tab and toolbar
-            </li>
-            <li>
-              <b>key</b> - the key of the JSON file to load
-            </li>
-            <li>
-              <b>readonly</b> - Y or 1 or true means that file can't be saved
-            </li>
-            <li>
-              <b>filter</b> - specifies some text to use in the quick filter
-            </li>
-          </ul>
-          <b>Sample uses</b>
-          <ul>
-            <li>
+            <MenuItem onClick={handleSet}>Set</MenuItem>
+            <MenuItem onClick={handleAdd}>Add</MenuItem>
+            <MenuItem onClick={handleClear}>Clear</MenuItem>
+            {/* <MenuItem onClick={handleSave}>Save</MenuItem>
+        <MenuItem onClick={handleLoad}>Load</MenuItem> */}
+          </Menu>
+
+          <Snackbar
+            open={openSnackbar}
+            autoHideDuration={6000}
+            onClose={handleCloseSnackbar}
+            message={message}
+          />
+
+          <Menu
+            anchorEl={anchorEl}
+            id="link-menu"
+            open={Boolean(anchorEl)}
+            onClose={handleCloseMenu}
+            onClick={handleCloseMenu}
+            transformOrigin={{ horizontal: "right", vertical: "top" }}
+            anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+          >
+            {links &&
+              links.map((t, id) => (
+                <MenuItem key={"menuItem" + id} onClick={handleCloseMenu}>
+                  <Tooltip key={"tt" + id}>
+                    <Box
+                      color={"success"}
+                      size="small"
+                      variant="outlined"
+                      onClick={() => {
+                        window.open(t.url, "_blank").focus();
+                      }}
+                      // sx={{ mb: 1 }}
+                    >
+                      {t.name}
+                    </Box>
+                  </Tooltip>
+                </MenuItem>
+              ))}
+          </Menu>
+
+          {/* Dialog with General info about this screen */}
+          <Dialog
+            fullWidth
+            maxWidth="xl"
+            onClose={() => setShowVersions(false)}
+            open={showVersions}
+          >
+            <DialogTitle>Load a version</DialogTitle>
+            <DialogContent>
+              {versions &&
+                versions.map((b, i) => (
+                  <Chip
+                    sx={{
+                      m: 0.5,
+                      backgroundColor: i % 2 === 0 ? "lightblue" : "lightgreen",
+                    }}
+                    key={"chip" + i}
+                    label={b}
+                    onClick={() => loadVersion(b)}
+                  />
+                ))}
+            </DialogContent>
+          </Dialog>
+
+          {/* Dialog to block usage of the screen if user is not allowed to use it */}
+          {validUserids && (
+            <Dialog
+              fullWidth
+              maxWidth="xl"
+              // onClose={() => setOpenInfo(false)}
+              open={validUserids.includes(username)}
+            >
+              You can't use this screen.
+            </Dialog>
+          )}
+          {/* Dialog with General info about this screen */}
+          <Dialog
+            fullWidth
+            maxWidth="xl"
+            onClose={() => setOpenInfo(false)}
+            open={openInfo}
+          >
+            <DialogTitle>
+              Info about this screen{" "}
               <Link
+                variant="inherit"
+                sx={{ display: "flex", justifyContent: "right" }}
                 href={
-                  "https://" +
-                  host +
-                  "/lsaf/filedownload/sdd%3A///general/biostat/apps/view/index.html?lsaf=/general/biostat/apps/view/test2.json"
+                  "https://argenxbvba.sharepoint.com/:w:/r/sites/Biostatistics/_layouts/15/Doc.aspx?sourcedoc=%7BB2358A9E-83A1-47DE-91FB-FD5C3C2CA62D%7D&file=View%20(web%20app).docx&action=default&mobileredirect=true"
                 }
+                target="_blank"
+                rel="noopener"
               >
-                View a JSON file, without metadata and therefore treating all
-                fields as strings
+                Open User Guide
               </Link>
-            </li>
-            <li>
-              <Link
-                href={
-                  "https://" +
-                  host +
-                  "/lsaf/filedownload/sdd%3A///general/biostat/apps/view/index.html?lsaf=/general/biostat/apps/view/test2.json&meta=/general/biostat/apps/view/test2-metadata.json"
-                }
-              >
-                View a JSON file, using metadata to define the columns
-              </Link>
-            </li>
-            <li>
-              <Link
-                href={
-                  "https://" +
-                  host +
-                  "/lsaf/filedownload/sdd%3A///general/biostat/apps/view/index.html?lsaf=/general/biostat/apps/view/data%20wtih%20keys.json&key=a"
-                }
-              >
-                View a JSON file which has multiple tables with keys, specifying
-                a key for which table you want to view
-              </Link>
-            </li>
-          </ul>
-        </DialogContent>
-      </Dialog>
-    </div>
+            </DialogTitle>
+            <DialogContent>
+              {infoHtml && (
+                <div dangerouslySetInnerHTML={{ __html: infoHtml }} />
+              )}
+              <h1>General Info</h1>
+              <Box sx={{ color: "blue", fontSize: 11 }}>
+                This tools works with JSON data that is arranged as an array of
+                objects. That is the kind of JSON you get when using PROC JSON
+                to export data from SAS. The metadata file is optional, but if
+                it is provided, it can be used to define the columns in the
+                table. The metadata file should be a JSON file with the same
+                keys as the data file, and each key should have a label, type,
+                and width. The type can be string, number, date, dateTime, or
+                boolean. The width is optional, and is used to set the width of
+                the column in the table. The data file can be keyed, in which
+                case the key parameter should be provided in the URL. The key
+                parameter is the key of the table to display. The data file can
+                be viewed in a separate window by clicking the "Data" button.
+                The metadata file can be viewed in a separate window by clicking
+                the "Meta" button. The data can be saved back to the server by
+                clicking the "Save" button. The data can be added to by clicking
+                the "Add" button. The data can be deleted by clicking the
+                "Delete" button.
+              </Box>
+              <ul>
+                <li>
+                  <b>Double click</b> on a cell to edit that row.
+                </li>
+                <li>
+                  Press <b>enter</b> to finish editing the row.
+                </li>
+                <li>
+                  Press <b>escape</b> or click away to cancel editing the row.
+                </li>
+                <li>
+                  Click on the column header and then the <b>3 vertical dots</b>{" "}
+                  to sort the column.
+                </li>
+                <li>
+                  Click on the <b>SAVE</b> button to write the JSON file back to
+                  the location it was loaded from.
+                </li>
+                <li>
+                  Pressing <b>SAVE</b> will first delete the file that was there
+                  (using HTTP DELETE), and then does an writes the file to
+                  server (using HTTP PUT).
+                </li>
+                <li>
+                  Each time you save, it makes a backup of the data in your
+                  browsers's local storage. So if disaster happens, you can get
+                  a previous version of the data.
+                </li>
+              </ul>
+              <b>URL parameters</b>
+              <ul>
+                <li>
+                  <b>lsaf</b> - the location of the JSON file to load
+                </li>
+                <li>
+                  <b>meta</b> - the location of the metadata file to load
+                </li>
+                <li>
+                  <b>info</b> - location of JSON file with HTML to use
+                  containing information about the data in this view
+                </li>
+                <li>
+                  <b>title</b> - text to display as a title in the tab and
+                  toolbar
+                </li>
+                <li>
+                  <b>key</b> - the key of the JSON file to load
+                </li>
+                <li>
+                  <b>readonly</b> - Y or 1 or true means that file can't be
+                  saved
+                </li>
+                <li>
+                  <b>filter</b> - specifies some text to use in the quick filter
+                </li>
+              </ul>
+              <b>Sample uses</b>
+              <ul>
+                <li>
+                  <Link
+                    href={
+                      "https://" +
+                      host +
+                      "/lsaf/filedownload/sdd%3A///general/biostat/apps/view/index.html?lsaf=/general/biostat/apps/view/test2.json"
+                    }
+                  >
+                    View a JSON file, without metadata and therefore treating
+                    all fields as strings
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href={
+                      "https://" +
+                      host +
+                      "/lsaf/filedownload/sdd%3A///general/biostat/apps/view/index.html?lsaf=/general/biostat/apps/view/test2.json&meta=/general/biostat/apps/view/test2-metadata.json"
+                    }
+                  >
+                    View a JSON file, using metadata to define the columns
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href={
+                      "https://" +
+                      host +
+                      "/lsaf/filedownload/sdd%3A///general/biostat/apps/view/index.html?lsaf=/general/biostat/apps/view/data%20wtih%20keys.json&key=a"
+                    }
+                  >
+                    View a JSON file which has multiple tables with keys,
+                    specifying a key for which table you want to view
+                  </Link>
+                </li>
+              </ul>
+            </DialogContent>
+          </Dialog>
+        </div>
+      ) : (
+        <Box>
+          <h1>You don't have permission to view this data</h1>
+          <p>
+            You should contact the owner of this JSON file and ask to be given
+            permission to use it.
+          </p>
+        </Box>
+      )}
+    </>
   );
 }
 export default App;
