@@ -849,7 +849,7 @@ function App() {
         fetch(rUrl)
           .then((response) => response.json())
           .then((_restricted) => {
-            console.log("_restricted", _restricted);
+            console.log("_restricted", _restricted, "username", username);
             setRestricted(_restricted);
             if (_restricted.includes(username)) setAllowed(true);
             else setAllowed(false);
@@ -1135,6 +1135,7 @@ function App() {
                 return formattedValue;
               const simpleDate = valueDate.toLocaleDateString();
               // console.log(valueDate, simpleDate);
+              if (simpleDate === "01/01/0001") return "n/a";
               if (simpleDate === "01/01/1970" || simpleDate === "Invalid Date")
                 return formattedValue;
               if (locales && localeOptions) {
@@ -1152,6 +1153,7 @@ function App() {
                   localeOptions
                 )}`;
               }
+              if (formattedValue === "Mon, 1 Jan 1") return "n/a";
               if (
                 formattedValue === "Invalid Date" ||
                 formattedValue === "Thu, 1 Jan 1970"
@@ -1359,6 +1361,7 @@ function App() {
                       year: "numeric",
                     })
                   : null;
+              if (dateText === "Mon, 1 Jan 1") dateText = "n/a";
               if (dateText === "Invalid Date" || dateText === "Thu, 1 Jan 1970")
                 dateText = null;
               if (params.value) {
@@ -1992,7 +1995,7 @@ function App() {
               host +
               "/lsaf/webdav/" +
               lsafType +
-              "/general/biostat/apps/encrypt/index.html"
+              "/general/biostat/apps/encrypt/index.html?app=view"
           )
           .focus();
       }, 3000);
@@ -2108,16 +2111,16 @@ function App() {
     else setChecked(false);
   }, [isArray]);
 
-  // console.log(
-  //   "cols",
-  //   cols,
-  //   "allowed",
-  //   allowed,
-  //   "restricted",
-  //   restricted,
-  //   "username",
-  //   username
-  // );
+  console.log(
+    "cols",
+    cols
+    // "allowed",
+    // allowed,
+    // "restricted",
+    // restricted,
+    // "username",
+    // username
+  );
 
   return (
     <>
