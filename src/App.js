@@ -406,6 +406,11 @@ function App() {
                         operator = "after";
                         today.setDate(today.getDate() - v);
                       }
+                      const _dateFrom = today - 7 * 3600 * 24 * 1000,
+                        dateFrom = "2020-01-01";
+                      // dateFrom = new Date(_dateFrom)
+                      //     .toISOString()
+                      //     .split("T")[0];
                       let compareValue = today.toISOString().slice(0, 10),
                         newFilter = [
                           ...currentFilter,
@@ -419,9 +424,7 @@ function App() {
                             field: df,
                             operator: operator === "after" ? "before" : "after",
                             value:
-                              operator === "after"
-                                ? "2030-01-01"
-                                : "2024-01-01",
+                              operator === "after" ? "2030-01-01" : dateFrom,
                             id: id + 1,
                           },
                         ];
@@ -609,7 +612,7 @@ function App() {
       // if different in a varChanged from timestampsToDo then add a timestamp to the new content in the varTimestamp field
 
       // drop id from each row in content
-      const contentWithoutId = content.map((c) => {
+      const contentWithoutId = structuredClone(content).map((c) => {
         delete c.id;
         return c;
       });
