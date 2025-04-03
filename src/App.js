@@ -1990,6 +1990,9 @@ function App() {
       setMessage(
         "😲 Logon failed - please re-enter your username & password and then return to this page to refresh it. 👍"
       );
+      // clear localStorage;
+      localStorage.removeItem("username");
+      localStorage.removeItem("encryptedPassword");
       setOpenSnackbar(true);
       setTimeout(() => {
         window
