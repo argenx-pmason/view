@@ -349,7 +349,7 @@ function App() {
                     key={"key-" + u}
                     sx={{ fontSize: 10, fontWeight: "bold", minWidth: 10 }}
                     onClick={(e, id) => {
-                      apiRef.current.upsertFilterItems([
+                      const fi = [
                         {
                           field: uv.key,
                           operator:
@@ -365,7 +365,9 @@ function App() {
                           value: u,
                           id: id,
                         },
-                      ]);
+                      ];
+                      console.log("filterItems", fi);
+                      apiRef.current.upsertFilterItems(fi);
                     }}
                   >
                     {u ? u : "blank"}
@@ -1062,7 +1064,10 @@ function App() {
           } else if (type === "dateTime") {
             valueGetter = (row) => {
               if (row.value && row.value.length > 10) {
-                return row && new Date(row.value);
+                const fixedDate = row.value
+                  .trim()
+                  .replace(/(\d+)([a-zA-Z]+)(\d+):/, "$1 $2 $3 ");
+                return row && new Date(fixedDate);
               } else return "";
             };
           }
@@ -1652,7 +1657,10 @@ function App() {
           } else if (type === "dateTime") {
             valueGetter = (row) => {
               if (row.value && row.value.length > 10) {
-                return row && new Date(row.value);
+                const fixedDate = row.value
+                  .trim()
+                  .replace(/(\d+)([a-zA-Z]+)(\d+):/, "$1 $2 $3 ");
+                return row && new Date(fixedDate);
               } else return "";
             };
           }
@@ -2092,11 +2100,44 @@ function App() {
         console.log("tempAllowSave", tempAllowSave);
         setAllowSave(tempAllowSave);
       }
+      // e.g. &filter=errors
       if ("filter" in parsed) {
         const tempQf = [params.get("filter")];
         setQuickFilterValues(tempQf);
         console.log("tempQf", tempQf);
         setQuickFilterValues(tempQf);
+      }
+      // e.g. &initialfilter=createdby=is=jbodart
+      if ("initialfilter" in parsed) {
+        const initialfilter = params.get("initialfilter")
+            ? params.get("initialfilter")
+            : null,
+          initialfiltertype = params.get("initialfiltertype")
+            ? params.get("initialfiltertype")
+            : "string";
+        setTimeout(() => {
+          const split = initialfilter.split("=");
+          apiRef.current.upsertFilterItems([]);
+          const fi = [
+            {
+              field: split[0],
+              operator: split[1],
+              value: split[2],
+              id: 0,
+            },
+          ];
+          // console.log(
+          //   "*** initialfilter",
+          //   initialfilter,
+          //   "initialfiltertype",
+          //   initialfiltertype,
+          //   "fi",
+          //   fi,
+          //   "split",
+          //   split
+          // );
+          if (initialfilter) apiRef.current.upsertFilterItems(fi);
+        }, 1000);
       }
       // use the key from the URL if it is there, otherwise use the key selected by user
       let useKey = parsed.key;
