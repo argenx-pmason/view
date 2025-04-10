@@ -83,7 +83,7 @@ function App() {
   if (host.includes("sharepoint")) {
     realhost = "xarprod.ondemand.sas.com";
   } else if (host.includes("localhost")) {
-    realhost = "xartest.ondemand.sas.com";
+    realhost = "xarval.ondemand.sas.com";
   } else {
     realhost = host;
   }
@@ -94,10 +94,13 @@ function App() {
     [token, setToken] = useState(undefined),
     [encryptedPassword, setEncryptedPassword] = useState(""),
     lsafType =
-      href.includes("/webdav/work") || href.includes("/filedownload/work")
+      href.includes("work=") ||
+      href.includes("/webdav/work") ||
+      href.includes("/filedownload/work")
         ? "work"
         : "repo",
     webDavPrefix = "https://" + host + "/lsaf/webdav/" + lsafType, // prefix for webdav access to LSAF
+    webDavPrefixWork = "https://" + host + "/lsaf/webdav/work", // prefix for webdav access to LSAF workspace
     fileDownloadPrefix = "https://" + host + "/lsaf/filedownload/sdd:",
     fileViewerPrefix =
       "https://" +
@@ -819,7 +822,7 @@ function App() {
     [lastModified, setLastModified] = useState(null),
     getData = async (d, m, i, k) => {
       console.log("getData", "d", d, "m", m, "i", i, "k", k);
-      const dUrl = `${fileDownloadPrefix}${d}`,
+      const dUrl = `${webDavPrefix}${d}`,
         dUrl2 = `${webDavPrefix}${d}`,
         mUrl = `${fileDownloadPrefix}${m}`,
         iUrl = `${fileDownloadPrefix}${i}`,
@@ -2062,6 +2065,15 @@ function App() {
         "infoUrl",
         infoUrl
       );
+      // specify a workspace file to view
+      if ("work" in parsed) {
+        setCurrent(parsed.work);
+        document.title = parsed.work;
+        url = `${webDavPrefixWork}${parsed.work}`;
+        console.log("work url", url);
+        setDataUrl(url);
+      }
+      // specify a repository file to view
       if ("lsaf" in parsed) {
         setCurrent(parsed.lsaf);
         document.title = parsed.lsaf;
@@ -2142,7 +2154,12 @@ function App() {
       // use the key from the URL if it is there, otherwise use the key selected by user
       let useKey = parsed.key;
       if (key) useKey = key;
-      getData(parsed.lsaf, parsed.meta, parsed.info, useKey);
+      getData(
+        parsed.lsaf ? parsed.lsaf : parsed.work,
+        parsed.meta,
+        parsed.info,
+        useKey
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [href, mode, key]);
