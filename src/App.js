@@ -106,6 +106,10 @@ function App() {
       "https://" +
       host +
       "/lsaf/filedownload/sdd:/general/biostat/apps/fileviewer/index.html?file=",
+    editJsonPrefix =
+      "https://" +
+      host +
+      "/lsaf/filedownload/sdd%3A///general/biostat/apps/editjson/index.html?file=",
     // logViewerPrefix =
     //   "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/apps/logviewer/index.html?log=",
     logViewerPrefix =
@@ -2138,16 +2142,6 @@ function App() {
               id: 0,
             },
           ];
-          // console.log(
-          //   "*** initialfilter",
-          //   initialfilter,
-          //   "initialfiltertype",
-          //   initialfiltertype,
-          //   "fi",
-          //   fi,
-          //   "split",
-          //   split
-          // );
           if (initialfilter) apiRef.current.upsertFilterItems(fi);
         }, 1000);
       }
@@ -2168,23 +2162,13 @@ function App() {
     if (!token) return;
     // get versions of the current file
     populateVersions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   useEffect(() => {
     if (!isArray) setChecked(true);
     else setChecked(false);
   }, [isArray]);
-
-  console.log(
-    "cols",
-    cols
-    // "allowed",
-    // allowed,
-    // "restricted",
-    // restricted,
-    // "username",
-    // username
-  );
 
   return (
     <>
@@ -2199,9 +2183,9 @@ function App() {
                   sx={{ mr: 2 }}
                   onClick={handleClickMenu}
                   aria-label="menu"
-                  aria-controls={Boolean(anchorEl) ? "View a table" : undefined}
+                  aria-controls={anchorEl ? "View a table" : undefined}
                   aria-haspopup="true"
-                  aria-expanded={Boolean(anchorEl) ? "true" : undefined}
+                  aria-expanded={anchorEl ? "true" : undefined}
                 >
                   <MenuIcon />
                 </IconButton>
@@ -2355,7 +2339,8 @@ function App() {
                       startIcon={<Visibility sx={{ fontSize: 10 }} />}
                       onClick={() => {
                         window
-                          .open(`${fileViewerPrefix}${dataUrl}`, "_blank")
+                          .open(`${editJsonPrefix}${current}`, "_blank")
+                          // .open(`${fileViewerPrefix}${dataUrl}`, "_blank")
                           .focus();
                       }}
                       size="small"
@@ -2371,12 +2356,12 @@ function App() {
                   <span>
                     <Button
                       variant="contained"
-                      disabled={showMeta ? false : true}
+                      disabled={!showMeta}
                       color="info"
                       startIcon={<Wysiwyg sx={{ fontSize: 10 }} />}
                       onClick={() => {
                         window
-                          .open(`${fileViewerPrefix}${metaUrl}`, "_blank")
+                          .open(`${editJsonPrefix}${meta}`, "_blank")
                           .focus();
                       }}
                       size="small"
