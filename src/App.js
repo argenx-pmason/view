@@ -119,6 +119,7 @@ function App() {
     params = new URLSearchParams(document.location.search),
     rLinks = `${webDavPrefix}/general/biostat/apps/control/links.json`,
     [links, setLinks] = useState(null),
+    [insight, setInsight] = useState(null),
     [restricted, setRestricted] = useState(null),
     [allowed, setAllowed] = useState(true),
     handleClickMenu = (event) => {
@@ -888,10 +889,15 @@ function App() {
           } else return res.json();
         })
         .then((data) => {
+          console.log("insight", insight, "data", data, "d", d);
           if (d.endsWith(".csv")) {
             const parsed = readString(data, { header: true });
             console.log("parsed", parsed);
             processData(parsed.data, k, metaData, info, tempDatefilters);
+          } else if (insight && insight === "1") {
+            const _data = data.map((r) => r[0]);
+            console.log("insight", insight, "_data", _data);
+            processData(_data, k, metaData, info, tempDatefilters);
           } else processData(data, k, metaData, info, tempDatefilters);
         });
       console.log("tempDatefilters", tempDatefilters);
@@ -2088,6 +2094,9 @@ function App() {
         const tempTitle = decodeURIComponent(parsed.title);
         setTitle(tempTitle);
         document.title = `${tempTitle} - ${parsed.lsaf}`;
+      }
+      if ("insight" in parsed) {
+        setInsight(parsed.insight);
       }
       if (!key && "key" in parsed) {
         setKey(parsed.key);
